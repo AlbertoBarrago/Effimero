@@ -1,10 +1,10 @@
 {
-  "name": "@margin/snippet",
+  "name": "@effimero/snippet",
   "private": true,
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "build": "esbuild src/margin.ts --bundle --minify --format=iife --outfile=dist/margin.js",
+    "build": "esbuild src/effimero.ts --bundle --minify --format=iife --outfile=dist/effimero.js",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {

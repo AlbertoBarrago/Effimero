@@ -1,8 +1,8 @@
 /**
- * Margin analytics snippet.
+ * Effimero analytics snippet.
  *
  * Usage:
- *   <script src="https://your-host/margin.js"
+ *   <script src="https://your-host/effimero.js"
  *           data-site="my-site" data-endpoint="https://your-host/collect" defer></script>
  *
  * Sends a pageview beacon on load and on SPA navigations (pushState/popstate).

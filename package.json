@@ -1,5 +1,5 @@
 {
-  "name": "margin",
+  "name": "effimero",
   "private": true,
   "version": "0.1.0",
   "description": "Privacy-first web analytics without cookies, localStorage, or fingerprinting",

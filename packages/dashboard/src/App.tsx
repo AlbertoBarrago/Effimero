@@ -44,7 +44,7 @@ export function App() {
   return (
     <main className="cockpit">
       <header>
-        <h1>MARGIN <span className="sub">FLIGHT DECK</span></h1>
+        <h1>EFFIMERO <span className="sub">FLIGHT DECK</span></h1>
         <div className="controls">
           <input value={siteId} onChange={(e) => setSiteId(e.target.value)} aria-label="Site ID" spellCheck={false} />
           <select value={range} onChange={(e) => setRange(Number(e.target.value))} aria-label="Range">
