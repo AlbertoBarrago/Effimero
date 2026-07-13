@@ -8,6 +8,7 @@ import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
 import { Redis } from "ioredis";
 import { collectSchema, statsSchema, liveSchema, healthSchema } from "./schemas.js";
+import { resolveStatsKey, requireStatsKey } from "./auth.js";
 import { config } from "./config.js";
 import { getDailySalt } from "./salt.js";
 import { visitorHash } from "./hash.js";
@@ -47,6 +48,11 @@ await app.register(swagger, {
       version: "0.1.0",
       license: { name: "AGPL-3.0-only", url: "https://www.gnu.org/licenses/agpl-3.0.html" },
     },
+    components: {
+      securitySchemes: {
+        bearerAuth: { type: "http", scheme: "bearer", description: "The STATS_API_KEY value" },
+      },
+    },
     tags: [
       { name: "ingest", description: "Beacon endpoint used by the snippet" },
       { name: "stats", description: "Aggregate read endpoints for dashboards" },
@@ -85,18 +91,25 @@ app.post<{ Body: CollectBody }>("/collect", { schema: collectSchema }, async (re
   return reply.code(204).send();
 });
 
+const statsKey = resolveStatsKey(app.log);
+const statsAuth = requireStatsKey(statsKey);
+
 app.get<{ Params: { siteId: string }; Querystring: { range?: number } }>(
   "/stats/:siteId",
-  { schema: statsSchema },
+  { schema: statsSchema, preHandler: statsAuth },
   async (req) => {
     const range = Math.min(Math.max(Number(req.query.range ?? 30), 1), config.retentionDays);
     return getStats(redis, req.params.siteId, range);
   },
 );
 
-app.get<{ Params: { siteId: string } }>("/live/:siteId", { schema: liveSchema }, async (req) => {
-  return { live: await getLiveVisitors(redis, req.params.siteId) };
-});
+app.get<{ Params: { siteId: string } }>(
+  "/live/:siteId",
+  { schema: liveSchema, preHandler: statsAuth },
+  async (req) => {
+    return { live: await getLiveVisitors(redis, req.params.siteId) };
+  },
+);
 
 app.get("/health", { schema: healthSchema }, async () => {
   const redisOk = await redis.ping().then(() => true).catch(() => false);

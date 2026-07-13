@@ -72,6 +72,7 @@ pnpm --filter @effimero/snippet build         # builds dist/effimero.js
 | `ALLOWED_ORIGINS` | `*` | Comma-separated CORS origins |
 | `TRUST_PROXY` | `false` | Set `true` behind a reverse proxy so the real client IP is read from `X-Forwarded-For` |
 | `RETENTION_DAYS` | `90` | Days of aggregate stats kept in Redis |
+| `STATS_API_KEY` | auto-generated | Bearer key protecting `/stats` and `/live`. Unset: a random key is generated and logged at boot. `disabled`: read endpoints are public |
 
 > **Important:** if Effimero runs behind nginx/Caddy/Traefik, set `TRUST_PROXY=true`, otherwise every visitor appears to come from the proxy's IP and unique counts collapse to ~1.
 
@@ -90,7 +91,6 @@ Full docs live in [`docs/`](docs/README.md): [getting started](docs/getting-star
 Community-driven, no fixed dates:
 
 - `GET /sites` endpoint listing known site ids, so the dashboard site picker becomes a dropdown
-- Optional authentication on `/stats` and `/live` for instances hosting third-party sites
 - Site id persisted in the dashboard URL (shareable views)
 
 ## License

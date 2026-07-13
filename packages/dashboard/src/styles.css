@@ -108,6 +108,42 @@ h1 .sub {
 .annunciator.fail .lamp { background: var(--status-critical); box-shadow: 0 0 6px var(--status-critical); }
 .annunciator.fail { color: var(--status-critical); }
 
+.keyprompt {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  border: 1px solid var(--series-3);
+  border-radius: 6px;
+  padding: 0.6rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  color: var(--series-3);
+}
+
+.keyprompt input {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  border-radius: 4px;
+  padding: 0.4rem 0.6rem;
+  font-family: ui-monospace, "SF Mono", monospace;
+  flex: 1;
+  min-width: 12rem;
+}
+
+.keyprompt button {
+  background: var(--series-3);
+  color: var(--surface-0);
+  border: none;
+  border-radius: 4px;
+  padding: 0.45rem 1rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
 .alert {
   border: 1px solid var(--status-critical);
   color: var(--status-critical);

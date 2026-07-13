@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { fetchStats, fetchLive, fetchHealth, type SiteStats } from "./api.js";
+import {
+  fetchStats,
+  fetchLive,
+  fetchHealth,
+  getAccessKey,
+  setAccessKey,
+  UnauthorizedError,
+  type SiteStats,
+} from "./api.js";
 import { Gauge, Readout, Annunciator, TimeSeries, HourHistogram, BarList } from "./components.js";
 
 const LIVE_POLL_MS = 5000;
@@ -12,19 +20,24 @@ export function App() {
   const [live, setLive] = useState(0);
   const [health, setHealth] = useState<{ api: boolean; redis: boolean }>({ api: false, redis: false });
   const [error, setError] = useState<string | null>(null);
+  const [needsKey, setNeedsKey] = useState(false);
+  const [keyDraft, setKeyDraft] = useState(getAccessKey());
+  // Bumped on key submit to retrigger the fetch effects with the new key.
+  const [authEpoch, setAuthEpoch] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
     const load = () =>
       fetchStats(siteId, range, controller.signal)
-        .then((s) => { setStats(s); setError(null); })
+        .then((s) => { setStats(s); setError(null); setNeedsKey(false); })
         .catch((e: unknown) => {
+          if (e instanceof UnauthorizedError) { setNeedsKey(true); setError(null); return; }
           if (!(e instanceof DOMException && e.name === "AbortError")) setError(String(e));
         });
     load();
     const id = setInterval(load, STATS_POLL_MS);
     return () => { controller.abort(); clearInterval(id); };
-  }, [siteId, range]);
+  }, [siteId, range, authEpoch]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -37,7 +50,12 @@ export function App() {
     poll();
     const id = setInterval(poll, LIVE_POLL_MS);
     return () => { controller.abort(); clearInterval(id); };
-  }, [siteId]);
+  }, [siteId, authEpoch]);
+
+  const submitKey = () => {
+    setAccessKey(keyDraft.trim());
+    setAuthEpoch((n) => n + 1);
+  };
 
   const totals = stats?.totals;
 
@@ -55,10 +73,26 @@ export function App() {
           <div className="annunciators">
             <Annunciator label="API" ok={health.api} />
             <Annunciator label="REDIS" ok={health.redis} />
-            <Annunciator label="DATA" ok={!!stats && !error} />
+            <Annunciator label="AUTH" ok={!needsKey} />
+            <Annunciator label="DATA" ok={!!stats && !error && !needsKey} />
           </div>
         </div>
       </header>
+
+      {needsKey && (
+        <div className="keyprompt" role="form" aria-label="Access key required">
+          <span>ACCESS KEY REQUIRED — check the server logs for the generated STATS_API_KEY</span>
+          <input
+            type="password"
+            value={keyDraft}
+            onChange={(e) => setKeyDraft(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && submitKey()}
+            placeholder="access key"
+            aria-label="Access key"
+          />
+          <button onClick={submitKey}>UNLOCK</button>
+        </div>
+      )}
 
       {error && <p role="alert" className="alert">SENSOR FAULT — {error}</p>}
 
@@ -70,7 +104,7 @@ export function App() {
         <Readout label="Today uniques" value={(stats?.days.at(-1)?.uniques ?? 0).toLocaleString()} />
       </section>
 
-      {stats && (
+      {stats && !needsKey && (
         <>
           <section className="row">
             <TimeSeries days={stats.days} />

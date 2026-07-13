@@ -22,16 +22,46 @@ export interface SiteStats {
   countries: Labelled[];
 }
 
-export async function fetchStats(siteId: string, range: number, signal?: AbortSignal): Promise<SiteStats> {
-  const res = await fetch(`/stats/${encodeURIComponent(siteId)}?range=${range}`, { signal });
+/**
+ * Access key for the read endpoints, kept in sessionStorage: this is the
+ * operator authenticating, not a tracked visitor, and it dies with the tab.
+ */
+const KEY_STORAGE = "effimero-access-key";
+
+export function getAccessKey(): string {
+  return sessionStorage.getItem(KEY_STORAGE) ?? "";
+}
+
+export function setAccessKey(key: string): void {
+  if (key) sessionStorage.setItem(KEY_STORAGE, key);
+  else sessionStorage.removeItem(KEY_STORAGE);
+}
+
+export class UnauthorizedError extends Error {
+  constructor() {
+    super("HTTP 401");
+  }
+}
+
+function authHeaders(): HeadersInit {
+  const key = getAccessKey();
+  return key ? { Authorization: `Bearer ${key}` } : {};
+}
+
+async function authedJson<T>(url: string, signal?: AbortSignal): Promise<T> {
+  const res = await fetch(url, { signal, headers: authHeaders() });
+  if (res.status === 401) throw new UnauthorizedError();
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
 
+export async function fetchStats(siteId: string, range: number, signal?: AbortSignal): Promise<SiteStats> {
+  return authedJson(`/stats/${encodeURIComponent(siteId)}?range=${range}`, signal);
+}
+
 export async function fetchLive(siteId: string, signal?: AbortSignal): Promise<number> {
-  const res = await fetch(`/live/${encodeURIComponent(siteId)}`, { signal });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return (await res.json()).live;
+  const data = await authedJson<{ live: number }>(`/live/${encodeURIComponent(siteId)}`, signal);
+  return data.live;
 }
 
 export async function fetchHealth(signal?: AbortSignal): Promise<{ status: string; redis: boolean }> {

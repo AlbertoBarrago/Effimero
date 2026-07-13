@@ -8,6 +8,7 @@ services:
       TRUST_PROXY: "false"
       ALLOWED_ORIGINS: "*"
       RETENTION_DAYS: "90"
+      # STATS_API_KEY: change-me   # omit to auto-generate per run (see logs); "disabled" opens /stats
     depends_on:
       - redis
     restart: unless-stopped

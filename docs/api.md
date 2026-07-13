@@ -2,7 +2,7 @@
 
 The canonical, always-current reference is the interactive Swagger UI served by the API itself at **`/docs/api`** (OpenAPI JSON at `/docs/api/json`). This page is a readable summary.
 
-All endpoints are JSON over HTTP. There is no authentication in this version; see the [hardening checklist](self-hosting.md#hardening-checklist).
+All endpoints are JSON over HTTP. The read endpoints (`/stats`, `/live`) require `Authorization: Bearer <STATS_API_KEY>`; the key is auto-generated and logged at boot when not configured. `/collect` is public by design: browsers of tracked sites post to it.
 
 ## POST /collect
 

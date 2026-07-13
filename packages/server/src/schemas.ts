@@ -56,6 +56,7 @@ export const collectSchema = {
 export const statsSchema = {
   tags: ["stats"],
   summary: "Aggregate stats for a site",
+  security: [{ bearerAuth: [] }],
   description:
     "Daily uniques and pageviews plus aggregate breakdowns (pages, referrers, " +
     "browsers, OS, devices, languages, countries, hour histogram) over the " +
@@ -132,12 +133,14 @@ export const statsSchema = {
       },
     },
     400: { type: "object", properties: { error: { type: "string" } } },
+    401: { type: "object", properties: { error: { type: "string" } }, description: "Missing or invalid access key." },
   },
 } as const;
 
 export const liveSchema = {
   tags: ["stats"],
   summary: "Live visitors",
+  security: [{ bearerAuth: [] }],
   description: "Unique visitors seen in roughly the last five minutes.",
   params: {
     type: "object",
@@ -153,6 +156,7 @@ export const liveSchema = {
       required: ["live"],
     },
     400: { type: "object", properties: { error: { type: "string" } } },
+    401: { type: "object", properties: { error: { type: "string" } }, description: "Missing or invalid access key." },
   },
 } as const;
 

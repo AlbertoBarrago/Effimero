@@ -23,6 +23,7 @@ All configuration is via environment variables on the `effimero` service:
 | `ALLOWED_ORIGINS` | `*` | Comma-separated list of CORS origins allowed to POST hits. Use your site origins in production. |
 | `TRUST_PROXY` | `false` | Trust `X-Forwarded-For` for the client IP. Required behind any reverse proxy. |
 | `RETENTION_DAYS` | `90` | How long aggregate daily stats are kept in Redis. |
+| `STATS_API_KEY` | auto-generated | Bearer key required by `/stats` and `/live`. When unset, a random key is generated and logged once at boot. Set `disabled` to make read endpoints public. |
 
 ## Reverse proxy
 
