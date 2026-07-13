@@ -1,6 +1,6 @@
 # Effimero Documentation
 
-Effimero is a self-hosted, privacy-first web analytics service. It counts unique visitors without cookies, localStorage, or fingerprinting, using a daily-salted hash that makes cross-day tracking impossible by construction.
+Effimero is a self-hosted, privacy-first web analytics service, free and open source under the AGPL-3.0. It counts unique visitors without cookies, localStorage, or fingerprinting, using a daily-salted hash that makes cross-day tracking impossible by construction.
 
 ## Contents
 

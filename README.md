@@ -1,6 +1,12 @@
 # Effimero
 
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL_3.0-blue.svg)](LICENSE)
+
 Privacy-first web analytics: no cookies, no localStorage, no fingerprinting, no consent banner needed.
+
+## Philosophy
+
+Effimero is free and open source, with no cloud plan and no premium tier. You self-host it, you own your data, and the AGPL-3.0 guarantees the whole stack stays open: anyone may offer Effimero hosting to others, provided their modifications remain open too. Privacy comes from the algorithm, not from a policy page, and the same applies to freedom: it comes from the license, not from a promise.
 
 ## How it works
 
@@ -69,6 +75,18 @@ pnpm --filter @effimero/snippet build         # builds dist/effimero.js
 ## Documentation
 
 Full docs live in [`docs/`](docs/README.md): [getting started](docs/getting-started.md), [self-hosting](docs/self-hosting.md), [API reference](docs/api.md) (interactive Swagger UI at `/docs/api`), [privacy model](docs/privacy.md), [architecture](docs/architecture.md).
+
+## Roadmap
+
+Community-driven, no fixed dates:
+
+- `GET /sites` endpoint listing known site ids, so the dashboard site picker becomes a dropdown
+- Optional authentication on `/stats` and `/live` for instances hosting third-party sites
+- Site id persisted in the dashboard URL (shareable views)
+
+## License
+
+[AGPL-3.0-only](LICENSE). In short: use it, self-host it, modify it, even offer it as a service, but derivative work and network-served modifications must stay open source.
 
 ## Credits
 
