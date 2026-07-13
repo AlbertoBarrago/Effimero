@@ -1,86 +1,204 @@
+/* Cockpit theme — deliberately dark-only, avionics style. */
 :root {
-  color-scheme: light dark;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --border: color-mix(in srgb, currentColor 15%, transparent);
-  --muted: color-mix(in srgb, currentColor 55%, transparent);
+  color-scheme: dark;
+  /* palette validated with dataviz validator against #0d1117 */
+  --surface-0: #0d1117;
+  --surface-1: #161b22;
+  --border: #2c313a;
+  --track: #262c35;
+  --ink: #e6edf3;
+  --ink-secondary: #9da7b3;
+  --ink-muted: #6e7781;
+  --series-1: #3987e5;
+  --series-2: #199e70;
+  --series-3: #c98500;
+  --status-good: #0ca30c;
+  --status-critical: #d03b3b;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
 }
+
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
-  padding: 2rem;
-  max-width: 960px;
-  margin-inline: auto;
+  background: var(--surface-0);
+  color: var(--ink);
+}
+
+.cockpit {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
 }
 
 h1 {
-  font-size: 1.4rem;
+  font-size: 1.3rem;
+  letter-spacing: 0.2em;
+  margin: 0;
+}
+
+h1 .sub {
+  color: var(--ink-muted);
+  font-weight: 400;
+  font-size: 0.9rem;
 }
 
 .controls {
   display: flex;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
+  gap: 0.6rem;
+  align-items: center;
 }
 
 .controls input,
 .controls select {
-  padding: 0.4rem 0.6rem;
+  background: var(--surface-1);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  background: transparent;
-  color: inherit;
+  color: var(--ink);
+  border-radius: 4px;
+  padding: 0.4rem 0.6rem;
+  font-family: ui-monospace, "SF Mono", monospace;
+  font-size: 0.85rem;
 }
 
-.kpis {
+.controls input { width: 10rem; }
+
+.annunciators { display: flex; gap: 0.4rem; }
+
+.annunciator {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  color: var(--ink-secondary);
+}
+
+.annunciator .lamp {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.annunciator.ok .lamp { background: var(--status-good); box-shadow: 0 0 6px var(--status-good); }
+.annunciator.fail .lamp { background: var(--status-critical); box-shadow: 0 0 6px var(--status-critical); }
+.annunciator.fail { color: var(--status-critical); }
+
+.alert {
+  border: 1px solid var(--status-critical);
+  color: var(--status-critical);
+  border-radius: 6px;
+  padding: 0.6rem 1rem;
+  font-family: ui-monospace, monospace;
+}
+
+.row {
   display: flex;
   gap: 1rem;
-  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
 }
 
-.kpi {
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0.75rem 1.25rem;
+.row.primary { align-items: stretch; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
 }
 
-.kpi .label {
-  font-size: 0.8rem;
-  color: var(--muted);
-}
-
-.kpi .value {
-  font-size: 1.6rem;
-  font-weight: 600;
-}
-
-.chart {
+.instrument {
+  background: var(--surface-1);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 1rem;
-  margin-bottom: 1.5rem;
-  overflow-x: auto;
+  flex: 1;
+  min-width: 180px;
 }
 
-.tables {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
+.instrument.wide { flex: 2 1 400px; overflow-x: auto; }
+.instrument.wide svg { width: 100%; height: auto; }
+
+.instrument-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-bottom: 0.5rem;
+  text-align: center;
 }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9rem;
-}
+.instrument.wide .instrument-label { text-align: left; }
 
-th,
-td {
-  text-align: left;
-  padding: 0.4rem 0.5rem;
-  border-bottom: 1px solid var(--border);
-}
+.gauge { display: flex; flex-direction: column; align-items: center; }
+.gauge-value { fill: var(--ink); font-size: 2rem; font-family: ui-monospace, "SF Mono", monospace; }
+.gauge-unit { fill: var(--ink-muted); font-size: 0.65rem; letter-spacing: 0.2em; }
 
-td.num {
-  text-align: right;
+.readout { display: flex; flex-direction: column; justify-content: center; }
+.readout-value {
+  font-family: ui-monospace, "SF Mono", monospace;
   font-variant-numeric: tabular-nums;
+  font-size: 2.2rem;
+  text-align: center;
+  color: var(--ink);
+}
+.readout-caption { font-size: 0.65rem; color: var(--ink-muted); text-align: center; margin-top: 0.3rem; }
+
+.panel-head { display: flex; justify-content: space-between; align-items: baseline; }
+.legend { display: flex; gap: 1rem; font-size: 0.75rem; color: var(--ink-secondary); }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; }
+.swatch.s1 { background: var(--series-1); }
+.swatch.s2 { background: var(--series-2); }
+
+.grid line.grid, line.grid { stroke: var(--border); stroke-dasharray: 2 4; }
+.tick { fill: var(--ink-muted); font-size: 10px; font-family: ui-monospace, monospace; }
+
+.tooltip rect { fill: var(--surface-0); stroke: var(--border); }
+.tooltip text { fill: var(--ink); font-size: 11px; font-family: ui-monospace, monospace; }
+
+.hour-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 140px;
+  padding-top: 0.5rem;
+}
+
+.hour-col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; position: relative; }
+.hour-bar { background: var(--series-3); border-radius: 2px 2px 0 0; min-height: 1px; }
+.hour-col .tick { position: absolute; bottom: -16px; font-size: 9px; color: var(--ink-muted); }
+
+.bar-row {
+  display: grid;
+  grid-template-columns: minmax(60px, 40%) 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+  font-size: 0.8rem;
+}
+
+.bar-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-secondary); }
+.bar-track { background: var(--track); border-radius: 2px; height: 8px; overflow: hidden; }
+.bar-fill { display: block; height: 100%; background: var(--series-1); border-radius: 2px; }
+.bar-count { font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; color: var(--ink); }
+
+.empty { color: var(--ink-muted); font-size: 0.8rem; }
+
+footer {
+  margin-top: 2rem;
+  text-align: center;
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  color: var(--ink-muted);
 }

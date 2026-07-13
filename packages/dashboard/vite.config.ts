@@ -7,6 +7,8 @@ export default defineConfig({
     port: 5180,
     proxy: {
       "/stats": "http://localhost:3000",
+      "/live": "http://localhost:3000",
+      "/health": "http://localhost:3000",
     },
   },
 });
