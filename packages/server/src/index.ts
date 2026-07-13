@@ -26,6 +26,16 @@ await app.register(cors, {
   methods: ["GET", "POST"],
 });
 
+// The snippet posts JSON as text/plain: JSON content types force a CORS
+// preflight that browsers refuse to pair with sendBeacon, dropping hits.
+app.addContentTypeParser(["text/plain"], { parseAs: "string" }, (_req, body, done) => {
+  try {
+    done(null, JSON.parse(body as string));
+  } catch {
+    done(null, undefined);
+  }
+});
+
 await app.register(swagger, {
   openapi: {
     info: {

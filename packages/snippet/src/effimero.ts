@@ -37,11 +37,13 @@
       referrer: document.referrer || undefined,
     });
 
-    // sendBeacon survives page unloads; fetch keepalive is the fallback.
-    if (!navigator.sendBeacon?.(endpoint, new Blob([body], { type: "application/json" }))) {
+    // Sent as text/plain (CORS-safelisted): a JSON content type forces a
+    // preflight that browsers refuse to pair with beacons, silently dropping
+    // the hit. sendBeacon survives page unloads; fetch keepalive is the fallback.
+    if (!navigator.sendBeacon?.(endpoint, body)) {
       fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "text/plain" },
         body,
         keepalive: true,
       }).catch(() => {});
