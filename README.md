@@ -16,6 +16,15 @@ Unique visitors are counted with a **daily rotating salted hash**:
 visitorHash = SHA-256(IP | User-Agent | dailySalt | siteId)
 ```
 
+```mermaid
+flowchart LR
+    IP["IP address"] --> H["SHA-256"]
+    UA["User-Agent"] --> H
+    S["daily salt 🎲"] --> H
+    SID["siteId"] --> H
+    H --> HLL["HyperLogLog<br/>unique count only"]
+```
+
 - The salt is random, generated once per UTC day, kept only in Redis, and never logged. When it rotates, yesterday's hashes become uncorrelatable with today's, so cross-day tracking is impossible **by construction**, not by policy.
 - The raw IP is used only in memory to compute the hash and is never stored.
 - Hashes are fed into a Redis **HyperLogLog**, so not even the hash itself is stored verbatim, only a probabilistic cardinality sketch (~0.81% standard error).

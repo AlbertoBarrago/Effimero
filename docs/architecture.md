@@ -19,18 +19,22 @@ pnpm workspaces; TypeScript everywhere except the static HTML packages.
 
 ## Data flow
 
-```
-browser ──POST /collect──▶ Fastify
-                             │  getDailySalt(redis)        salt.ts
-                             │  visitorHash(ip, ua, salt)  hash.ts
-                             │  deriveDimensions(ip, ua)   enrichment.ts
-                             ▼
-                           recordHit(redis)                stats.ts
-                             │  PFADD  uniques + live
-                             │  INCR   pageviews
-                             │  HINCRBY paths/referrers/dimensions/hours
-                             ▼
-dashboard ◀──GET /stats,/live── getStats / getLiveVisitors
+```mermaid
+sequenceDiagram
+    participant B as Browser (snippet)
+    participant F as Fastify
+    participant R as Redis
+
+    B->>F: POST /collect { siteId, path, referrer }
+    F->>R: getDailySalt (SET NX + TTL) — salt.ts
+    Note over F: visitorHash = SHA-256(ip | ua | salt | siteId) — hash.ts<br/>deriveDimensions(ip, ua) — enrichment.ts<br/>IP discarded after this point
+    F->>R: recordHit — stats.ts<br/>PFADD uniques+live · INCR pageviews · HINCRBY dimensions
+    F-->>B: 204 No Content
+
+    participant D as Dashboard
+    D->>F: GET /stats/:siteId · GET /live/:siteId
+    F->>R: PFCOUNT · GET · HGETALL (pipelined)
+    F-->>D: aggregates only
 ```
 
 ## Module responsibilities (server)
