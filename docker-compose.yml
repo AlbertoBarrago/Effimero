@@ -1,0 +1,23 @@
+services:
+  margin:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      REDIS_URL: redis://redis:6379
+      TRUST_PROXY: "false"
+      ALLOWED_ORIGINS: "*"
+      RETENTION_DAYS: "90"
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --save 300 1 --appendonly no
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+
+volumes:
+  redis-data:
