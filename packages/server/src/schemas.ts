@@ -175,3 +175,18 @@ export const healthSchema = {
     },
   },
 } as const;
+
+export const sitesSchema = {
+  tags: ["stats"],
+  summary: "Known site ids",
+  description: "Site ids seen within the retention window, most recently active first.",
+  security: [{ bearerAuth: [] }],
+  response: {
+    200: {
+      type: "object",
+      properties: { sites: { type: "array", items: { type: "string" } } },
+      required: ["sites"],
+    },
+    401: { type: "object", properties: { error: { type: "string" } }, description: "Missing or invalid access key." },
+  },
+} as const;

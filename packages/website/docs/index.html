@@ -108,6 +108,7 @@ curl http://localhost:3000/health   # {"status":"ok","redis":true}</code></pre>
     <tr><td><code>ALLOWED_ORIGINS</code></td><td><code>*</code></td><td>Comma-separated CORS origins allowed to POST hits. Restrict in production.</td></tr>
     <tr><td><code>TRUST_PROXY</code></td><td><code>false</code></td><td>Trust <code>X-Forwarded-For</code>. Required behind any reverse proxy.</td></tr>
     <tr><td><code>RETENTION_DAYS</code></td><td><code>90</code></td><td>Days of aggregate stats kept in Redis</td></tr>
+    <tr><td><code>STATS_API_KEY</code></td><td>auto-generated</td><td>Bearer key protecting <code>/stats</code> and <code>/live</code>. Unset: a random key is generated and logged once at boot (<code>docker compose logs effimero | grep generated</code>). Set <code>disabled</code> to make reads public.</td></tr>
   </table>
 
   <div class="callout"><p><strong>The one setting that bites:</strong> behind nginx, Caddy, or Traefik you must set <code>TRUST_PROXY=true</code>, otherwise every visitor appears to come from the proxy IP and unique counts flatline at 1.</p></div>
@@ -129,6 +130,8 @@ curl http://localhost:3000/health   # {"status":"ok","redis":true}</code></pre>
 
   <h2 id="api">API reference</h2>
   <p>The interactive, always-current reference is the Swagger UI served by the API at <code>/docs/api</code> (OpenAPI JSON at <code>/docs/api/json</code>). Summary:</p>
+
+  <div class="callout"><p><strong>Authentication:</strong> read endpoints require <code>Authorization: Bearer &lt;STATS_API_KEY&gt;</code>. Without configuration a random key is generated at every boot and printed once in the server logs; the dashboard asks for it and keeps it in sessionStorage for the tab's lifetime. <code>/collect</code> stays public by design: it is written to by your visitors' browsers and carries no identity.</p></div>
 
   <h3>POST /collect</h3>
   <pre><code>{ "siteId": "my-site", "path": "/pricing", "referrer": "https://google.com/" }</code></pre>

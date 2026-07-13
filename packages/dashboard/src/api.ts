@@ -64,6 +64,11 @@ export async function fetchLive(siteId: string, signal?: AbortSignal): Promise<n
   return data.live;
 }
 
+export async function fetchSites(signal?: AbortSignal): Promise<string[]> {
+  const data = await authedJson<{ sites: string[] }>("/sites", signal);
+  return data.sites;
+}
+
 export async function fetchHealth(signal?: AbortSignal): Promise<{ status: string; redis: boolean }> {
   const res = await fetch("/health", { signal });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);

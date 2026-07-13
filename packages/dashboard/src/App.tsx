@@ -3,6 +3,7 @@ import {
   fetchStats,
   fetchLive,
   fetchHealth,
+  fetchSites,
   getAccessKey,
   setAccessKey,
   UnauthorizedError,
@@ -13,8 +14,22 @@ import { Gauge, Readout, Annunciator, TimeSeries, HourHistogram, BarList } from 
 const LIVE_POLL_MS = 5000;
 const STATS_POLL_MS = 30000;
 
+/** Initial site from the URL (?site=), so views are shareable and survive refresh. */
+function siteFromUrl(): string {
+  return new URLSearchParams(location.search).get("site") ?? "";
+}
+
 export function App() {
-  const [siteId, setSiteId] = useState("my-site");
+  const [siteId, setSiteIdState] = useState(siteFromUrl());
+  const [sites, setSites] = useState<string[]>([]);
+
+  const setSiteId = (id: string) => {
+    setSiteIdState(id);
+    const url = new URL(location.href);
+    if (id) url.searchParams.set("site", id);
+    else url.searchParams.delete("site");
+    history.replaceState(null, "", url);
+  };
   const [range, setRange] = useState(30);
   const [stats, setStats] = useState<SiteStats | null>(null);
   const [live, setLive] = useState(0);
@@ -26,6 +41,7 @@ export function App() {
   const [authEpoch, setAuthEpoch] = useState(0);
 
   useEffect(() => {
+    if (!siteId) return;
     const controller = new AbortController();
     const load = () =>
       fetchStats(siteId, range, controller.signal)
@@ -40,6 +56,7 @@ export function App() {
   }, [siteId, range, authEpoch]);
 
   useEffect(() => {
+    if (!siteId) return;
     const controller = new AbortController();
     const poll = () => {
       fetchLive(siteId, controller.signal).then(setLive).catch(() => {});
@@ -51,6 +68,18 @@ export function App() {
     const id = setInterval(poll, LIVE_POLL_MS);
     return () => { controller.abort(); clearInterval(id); };
   }, [siteId, authEpoch]);
+
+  // Load known sites once authenticated; default to the most recent one.
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchSites(controller.signal)
+      .then((list) => {
+        setSites(list);
+        if (!siteFromUrl() && list.length > 0) setSiteId(list[0]!);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [authEpoch]);
 
   const submitKey = () => {
     setAccessKey(keyDraft.trim());
@@ -64,7 +93,17 @@ export function App() {
       <header>
         <h1>EFFIMERO <span className="sub">FLIGHT DECK</span></h1>
         <div className="controls">
-          <input value={siteId} onChange={(e) => setSiteId(e.target.value)} aria-label="Site ID" spellCheck={false} />
+          {sites.length > 0 ? (
+            <select value={siteId} onChange={(e) => setSiteId(e.target.value)} aria-label="Site">
+              {!sites.includes(siteId) && siteId && <option value={siteId}>{siteId}</option>}
+              {sites.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          ) : (
+            <input value={siteId} onChange={(e) => setSiteId(e.target.value)} aria-label="Site ID"
+                   placeholder="site id" spellCheck={false} />
+          )}
           <select value={range} onChange={(e) => setRange(Number(e.target.value))} aria-label="Range">
             <option value={7}>7 D</option>
             <option value={30}>30 D</option>

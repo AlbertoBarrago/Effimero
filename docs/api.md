@@ -61,6 +61,14 @@ Unique visitors in roughly the last 5 minutes (two 150-second HLL buckets).
 { "live": 7 }
 ```
 
+## GET /sites
+
+Known site ids seen within the retention window, most recently active first. Requires the bearer key.
+
+```json
+{ "sites": ["my-site", "blog"] }
+```
+
 ## GET /health
 
 ```json

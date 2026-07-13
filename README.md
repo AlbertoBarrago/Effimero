@@ -86,13 +86,6 @@ pnpm --filter @effimero/snippet build         # builds dist/effimero.js
 
 Full docs live in [`docs/`](docs/README.md): [getting started](docs/getting-started.md), [self-hosting](docs/self-hosting.md), [API reference](docs/api.md) (interactive Swagger UI at `/docs/api`), [privacy model](docs/privacy.md), [architecture](docs/architecture.md).
 
-## Roadmap
-
-Community-driven, no fixed dates:
-
-- `GET /sites` endpoint listing known site ids, so the dashboard site picker becomes a dropdown
-- Site id persisted in the dashboard URL (shareable views)
-
 ## License
 
 [AGPL-3.0-only](LICENSE). In short: use it, self-host it, modify it, even offer it as a service, but derivative work and network-served modifications must stay open source.

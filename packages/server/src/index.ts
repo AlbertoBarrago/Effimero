@@ -7,12 +7,12 @@ import fastifyStatic from "@fastify/static";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
 import { Redis } from "ioredis";
-import { collectSchema, statsSchema, liveSchema, healthSchema } from "./schemas.js";
+import { collectSchema, statsSchema, liveSchema, healthSchema, sitesSchema } from "./schemas.js";
 import { resolveStatsKey, requireStatsKey } from "./auth.js";
 import { config } from "./config.js";
 import { getDailySalt } from "./salt.js";
 import { visitorHash } from "./hash.js";
-import { recordHit, getStats, getLiveVisitors } from "./stats.js";
+import { recordHit, getStats, getLiveVisitors, getSites } from "./stats.js";
 import { deriveDimensions } from "./enrichment.js";
 
 const redis = new Redis(config.redisUrl, { maxRetriesPerRequest: 2 });
@@ -110,6 +110,10 @@ app.get<{ Params: { siteId: string } }>(
     return { live: await getLiveVisitors(redis, req.params.siteId) };
   },
 );
+
+app.get("/sites", { schema: sitesSchema, preHandler: statsAuth }, async () => {
+  return { sites: await getSites(redis) };
+});
 
 app.get("/health", { schema: healthSchema }, async () => {
   const redisOk = await redis.ping().then(() => true).catch(() => false);

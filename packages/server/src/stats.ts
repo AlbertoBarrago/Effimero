@@ -49,11 +49,20 @@ export async function recordHit(redis: Redis, hit: Hit): Promise<void> {
 
   for (const key of expiring) pipeline.expire(key, RETENTION_SECONDS);
 
+  // Registry of known sites for the dashboard picker, scored by last-seen.
+  pipeline.zadd("sites", Date.now(), hit.siteId);
+
   const liveKey = currentLiveKey(hit.siteId);
   pipeline.pfadd(liveKey, hit.visitorHash);
   pipeline.expire(liveKey, LIVE_BUCKET_SECONDS * 3);
 
   await pipeline.exec();
+}
+
+/** Known site ids, most recently active first. Prunes ids idle past retention. */
+export async function getSites(redis: Redis): Promise<string[]> {
+  await redis.zremrangebyscore("sites", "-inf", Date.now() - RETENTION_SECONDS * 1000);
+  return redis.zrevrange("sites", 0, -1);
 }
 
 /** Unique visitors seen in the current + previous live bucket (~last 5 min). */

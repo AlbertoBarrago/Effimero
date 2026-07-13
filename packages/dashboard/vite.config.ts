@@ -8,6 +8,7 @@ export default defineConfig({
     proxy: {
       "/stats": "http://localhost:3000",
       "/live": "http://localhost:3000",
+      "/sites": "http://localhost:3000",
       "/health": "http://localhost:3000",
     },
   },
