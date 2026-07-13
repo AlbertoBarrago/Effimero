@@ -4,7 +4,10 @@ import { fileURLToPath } from "node:url";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
+import swagger from "@fastify/swagger";
+import swaggerUi from "@fastify/swagger-ui";
 import { Redis } from "ioredis";
+import { collectSchema, statsSchema, liveSchema, healthSchema } from "./schemas.js";
 import { config } from "./config.js";
 import { getDailySalt } from "./salt.js";
 import { visitorHash } from "./hash.js";
@@ -23,23 +26,34 @@ await app.register(cors, {
   methods: ["GET", "POST"],
 });
 
+await app.register(swagger, {
+  openapi: {
+    info: {
+      title: "Effimero API",
+      description:
+        "Privacy-first web analytics. Visitor identity is a daily-salted hash " +
+        "computed in memory and never stored; only aggregate counters and " +
+        "HyperLogLog sketches persist.",
+      version: "0.1.0",
+      license: { name: "MIT", url: "https://opensource.org/licenses/MIT" },
+    },
+    tags: [
+      { name: "ingest", description: "Beacon endpoint used by the snippet" },
+      { name: "stats", description: "Aggregate read endpoints for dashboards" },
+      { name: "system", description: "Health and diagnostics" },
+    ],
+  },
+});
+await app.register(swaggerUi, { routePrefix: "/docs/api" });
+
 interface CollectBody {
-  siteId?: string;
-  path?: string;
+  siteId: string;
+  path: string;
   referrer?: string;
 }
 
-const SITE_ID_RE = /^[a-zA-Z0-9._-]{1,64}$/;
-
-app.post<{ Body: CollectBody }>("/collect", async (req, reply) => {
-  const { siteId, path, referrer } = req.body ?? {};
-
-  if (!siteId || !SITE_ID_RE.test(siteId)) {
-    return reply.code(400).send({ error: "invalid siteId" });
-  }
-  if (!path || typeof path !== "string" || path.length > 512) {
-    return reply.code(400).send({ error: "invalid path" });
-  }
+app.post<{ Body: CollectBody }>("/collect", { schema: collectSchema }, async (req, reply) => {
+  const { siteId, path, referrer } = req.body;
 
   const now = new Date();
   const salt = await getDailySalt(redis, now);
@@ -61,26 +75,20 @@ app.post<{ Body: CollectBody }>("/collect", async (req, reply) => {
   return reply.code(204).send();
 });
 
-app.get<{ Params: { siteId: string }; Querystring: { range?: string } }>(
+app.get<{ Params: { siteId: string }; Querystring: { range?: number } }>(
   "/stats/:siteId",
-  async (req, reply) => {
-    const { siteId } = req.params;
-    if (!SITE_ID_RE.test(siteId)) {
-      return reply.code(400).send({ error: "invalid siteId" });
-    }
+  { schema: statsSchema },
+  async (req) => {
     const range = Math.min(Math.max(Number(req.query.range ?? 30), 1), config.retentionDays);
-    return getStats(redis, siteId, range);
+    return getStats(redis, req.params.siteId, range);
   },
 );
 
-app.get<{ Params: { siteId: string } }>("/live/:siteId", async (req, reply) => {
-  if (!SITE_ID_RE.test(req.params.siteId)) {
-    return reply.code(400).send({ error: "invalid siteId" });
-  }
+app.get<{ Params: { siteId: string } }>("/live/:siteId", { schema: liveSchema }, async (req) => {
   return { live: await getLiveVisitors(redis, req.params.siteId) };
 });
 
-app.get("/health", async () => {
+app.get("/health", { schema: healthSchema }, async () => {
   const redisOk = await redis.ping().then(() => true).catch(() => false);
   return { status: redisOk ? "ok" : "degraded", redis: redisOk };
 });
