@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Effimero: privacy-first analytics, no cookies required</title>
+<meta name="description" content="Web analytics without cookies, localStorage, or fingerprinting. Visitor identity comes from a daily-salted hash: privacy by construction, not by policy." />
+<style>
+  :root {
+    color-scheme: light dark;
+    --accent: #3987e5;
+    --accent-2: #199e70;
+    --bg: #fcfcfb;
+    --surface: #f4f4f2;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --border: rgba(11,11,11,0.12);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --ink: #e6edf3;
+      --ink-2: #9da7b3;
+      --border: rgba(255,255,255,0.12);
+    }
+  }
+  * { box-sizing: border-box; }
+  /* Mobile-first: base styles target small screens, media queries scale up. */
+  body { margin: 0; background: var(--bg); color: var(--ink); line-height: 1.6; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 1.25rem; }
+  header.hero { padding: 3rem 0 2.5rem; text-align: center; }
+  .hero h1 { font-size: clamp(2rem, 6vw + 0.5rem, 2.8rem); margin: 0 0 1rem; letter-spacing: -0.02em; text-wrap: balance; }
+  .hero h1 em { color: var(--accent); font-style: normal; }
+  .hero p.lead { font-size: clamp(1.05rem, 2.5vw, 1.25rem); color: var(--ink-2); max-width: 640px; margin: 0 auto 1.75rem; text-wrap: pretty; }
+  .badges { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1.75rem; }
+  .badge { border: 1px solid var(--border); border-radius: 999px; padding: 0.25rem 0.8rem; font-size: 0.8rem; color: var(--ink-2); white-space: nowrap; }
+  .badge s { text-decoration-color: #d03b3b; text-decoration-thickness: 2px; }
+  .cta-row { display: flex; flex-direction: column; gap: 0.6rem; align-items: stretch; max-width: 320px; margin: 0 auto; }
+  .cta { display: block; background: var(--accent); color: #fff; text-decoration: none; padding: 0.75rem 1.6rem; border-radius: 8px; font-weight: 600; text-align: center; }
+  .cta.ghost { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+  /* section.wrap outranks .wrap, so vertical padding survives the reset */
+  section.wrap { padding: 3.5rem 1.25rem 4rem; border-top: 1px solid var(--border); }
+  h2 { font-size: clamp(1.35rem, 4vw, 1.6rem); margin: 0 0 1.5rem; }
+  section > p { margin-bottom: 1.5rem; }
+  .flow { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  @media (min-width: 640px) {
+    .wrap { padding: 0 1.5rem; }
+    header.hero { padding: 6rem 0 5rem; }
+    section.wrap { padding: 5rem 1.5rem 5.5rem; }
+    .flow { padding: 1.5rem; }
+    .cta-row { flex-direction: row; justify-content: center; max-width: none; }
+    .cta { display: inline-block; }
+  }
+  .flow svg { display: block; margin: 0 auto; min-width: 640px; }
+  .flow text { fill: var(--ink); font-size: 13px; font-family: ui-monospace, "SF Mono", monospace; }
+  .flow text.dim { fill: var(--ink-2); font-size: 11px; font-family: system-ui, sans-serif; }
+  .flow rect { fill: none; stroke: var(--accent); stroke-width: 1.5; rx: 8; }
+  .flow rect.ghost { stroke: var(--ink-2); stroke-dasharray: 4 4; }
+  .flow line, .flow path.arrow { stroke: var(--ink-2); stroke-width: 1.5; fill: none; }
+  .cols { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+  @media (min-width: 560px) { .cols { grid-template-columns: repeat(2, 1fr); gap: 1.25rem; } }
+  @media (min-width: 880px) { .cols { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); } }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; }
+  .card h3 { margin-top: 0; font-size: 1.05rem; }
+  .card p { color: var(--ink-2); font-size: 0.95rem; margin-bottom: 0; }
+  pre { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.5rem; margin: 1.25rem 0 1.75rem; overflow-x: auto; -webkit-overflow-scrolling: touch; font-size: 0.85rem; line-height: 1.5; }
+  code { font-family: ui-monospace, "SF Mono", monospace; }
+  .tradeoffs { padding-left: 1.25rem; }
+  .tradeoffs li { margin-bottom: 0.5rem; color: var(--ink-2); }
+  .tradeoffs li strong { color: var(--ink); }
+  footer { border-top: 1px solid var(--border); padding: 2rem 0; text-align: center; color: var(--ink-2); font-size: 0.85rem; }
+  footer a { color: var(--accent); }
+  .topnav { display: flex; justify-content: space-between; align-items: center; max-width: 880px; margin: 0 auto; padding: 1rem 1.25rem; }
+  .brand { font-weight: 700; letter-spacing: 0.02em; }
+  .navlinks { display: flex; gap: 1.25rem; margin-right: 4rem; }
+  .navlinks a { color: var(--ink-2); text-decoration: none; font-size: 0.9rem; }
+  .navlinks a:hover { color: var(--accent); }
+  .github-corner { position: absolute; top: 0; right: 0; }
+  .github-corner:hover .octo-arm { animation: octo-wave 560ms ease-in-out; }
+  @keyframes octo-wave { 0%, 100% { rotate: 0deg; } 20%, 60% { rotate: -25deg; } 40%, 80% { rotate: 10deg; } }
+  @media (min-width: 640px) { .topnav { padding: 1.25rem 1.5rem; } }
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <span class="brand">Effimero</span>
+  <div class="navlinks">
+    <a href="docs/index.html">Docs</a>
+    <a href="docs/index.html#api">API</a>
+    <a href="https://github.com/albertobarrago/effimero">GitHub</a>
+  </div>
+</nav>
+<a class="github-corner" href="https://github.com/albertobarrago/effimero" aria-label="View source on GitHub">
+  <svg width="70" height="70" viewBox="0 0 250 250" aria-hidden="true">
+    <path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z" fill="var(--accent)"/>
+    <path class="octo-arm" d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="#fff" style="transform-origin: 130px 106px"/>
+    <path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="#fff"/>
+  </svg>
+</a>
+
+<header class="hero wrap">
+  <h1>Analytics that <em>can't</em> track you.</h1>
+  <p class="lead">Effimero counts unique visitors without cookies, localStorage, or fingerprinting.
+  Privacy isn't a policy promise, it's a property of the algorithm.</p>
+  <div class="badges">
+    <span class="badge"><s>cookies</s></span>
+    <span class="badge"><s>localStorage</s></span>
+    <span class="badge"><s>fingerprinting</s></span>
+    <span class="badge"><s>consent banner</s></span>
+    <span class="badge">✓ self-hosted</span>
+    <span class="badge">✓ ~700 byte snippet</span>
+  </div>
+  <div class="cta-row">
+    <a class="cta" href="#quickstart">Get started</a>
+    <a class="cta ghost" href="#how">How it works</a>
+  </div>
+</header>
+
+<section id="how" class="wrap">
+  <h2>How it works</h2>
+  <p>Every visitor is identified by a hash that <strong>rotates out of existence every day</strong>:</p>
+
+  <div class="flow">
+    <svg viewBox="0 0 720 210" role="img" aria-label="Hash flow: IP, User-Agent and daily salt combine into SHA-256, which feeds a HyperLogLog counter. The IP is discarded and the salt rotates daily.">
+      <rect x="10" y="15" width="150" height="34" />
+      <text x="85" y="37" text-anchor="middle">IP address</text>
+      <rect x="10" y="65" width="150" height="34" />
+      <text x="85" y="87" text-anchor="middle">User-Agent</text>
+      <rect x="10" y="115" width="150" height="34" />
+      <text x="85" y="137" text-anchor="middle">daily salt 🎲</text>
+      <path class="arrow" d="M160 32 H 230 V 78 H 260" />
+      <path class="arrow" d="M160 82 H 260" />
+      <path class="arrow" d="M160 132 H 230 V 86 H 260" />
+      <rect x="260" y="60" width="140" height="44" />
+      <text x="330" y="87" text-anchor="middle">SHA-256</text>
+      <path class="arrow" d="M400 82 H 470" />
+      <rect x="470" y="60" width="160" height="44" />
+      <text x="550" y="80" text-anchor="middle">HyperLogLog</text>
+      <text x="550" y="96" text-anchor="middle" class="dim">unique count only</text>
+      <text x="85" y="170" class="dim" text-anchor="middle">IP: used in memory, never stored</text>
+      <text x="85" y="186" class="dim" text-anchor="middle">salt: rotates at midnight UTC</text>
+      <text x="330" y="180" class="dim" text-anchor="middle">hash: never stored verbatim</text>
+      <text x="550" y="180" class="dim" text-anchor="middle">only the unique count survives</text>
+    </svg>
+  </div>
+
+  <p>At midnight UTC the salt is replaced with a fresh random value and the old one is deleted.
+  From that moment, <strong>yesterday's hashes are mathematically uncorrelatable with today's</strong>:
+  there is nothing to subpoena, leak, or de-anonymize. Cross-day tracking isn't forbidden; it's <em>impossible</em>.</p>
+</section>
+
+<section class="wrap">
+  <h2>What you still get</h2>
+  <div class="cols">
+    <div class="card"><h3>Daily unique visitors</h3><p>Accurate per-day uniques via HyperLogLog. The hash itself is never stored, only a cardinality sketch.</p></div>
+    <div class="card"><h3>Live visitors</h3><p>Who's on your site right now, from a 5-minute rolling window.</p></div>
+    <div class="card"><h3>Pages &amp; referrers</h3><p>Top content and traffic sources, with referrers reduced to hostname only.</p></div>
+    <div class="card"><h3>Tech &amp; geo</h3><p>Browser, OS, device class, language, and country, stored only as aggregate counters.</p></div>
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>What you give up, on purpose</h2>
+  <ul class="tradeoffs">
+    <li><strong>No returning-visitor metrics.</strong> The daily salt rotation makes cross-day identity impossible by design.</li>
+    <li><strong>No multi-touch attribution.</strong> No persistent identity means no journey stitching.</li>
+    <li><strong>Shared networks blur.</strong> Same IP + same browser version within one day counts as one visitor.</li>
+    <li><strong>Counts are probabilistic.</strong> HyperLogLog carries a ~0.81% standard error.</li>
+  </ul>
+  <p>These are honest trade-offs, not bugs. If you need cross-day funnels, Effimero is the wrong tool, and it will never quietly become one.</p>
+</section>
+
+<section id="quickstart" class="wrap">
+  <h2>Quick start</h2>
+  <p>Self-host with Docker in one command:</p>
+  <pre><code>git clone https://github.com/albertobarrago/effimero && cd effimero
+docker compose up -d</code></pre>
+  <p>Then drop the snippet on your site:</p>
+  <pre><code>&lt;script src="https://your-host/effimero.js" data-site="my-site" defer&gt;&lt;/script&gt;</code></pre>
+  <p>Open the cockpit dashboard at <code>https://your-host/</code>. That's it: no consent banner needed,
+  because nothing identifying is ever stored, on the device or the server.</p>
+</section>
+
+<section class="wrap">
+  <h2>Engineering principles</h2>
+  <div class="cols">
+    <div class="card"><h3>Privacy by construction</h3><p>Guarantees come from the algorithm, not the privacy policy. If the operator turned malicious, the data still wouldn't exist.</p></div>
+    <div class="card"><h3>Separation of concerns</h3><p>Hashing, enrichment, storage, and transport are isolated modules behind small interfaces. Swap Redis or the UA parser without touching ingest logic.</p></div>
+    <div class="card"><h3>Battle-tested dependencies</h3><p>Proven libraries (Fastify, ioredis, ua-parser-js) where they earn their keep; no wheel reinvention, no dependency bloat either.</p></div>
+    <div class="card"><h3>Honest limits</h3><p>Every trade-off is documented up front. An analytics tool that overstates its accuracy is lying to you.</p></div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    Effimero · MIT licensed · Approach inspired by <a href="https:// INEFFIMERO /blog/tracking-unique-visitors-without-cookies"> INEFFIMERO </a> · Built by <a href="https://github.com/albertobarrago">alBz</a>
+  </div>
+</footer>
+
+</body>
+</html>
