@@ -71,6 +71,15 @@ h1 .sub {
 
 .controls input { width: 10rem; }
 
+.controls select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 2rem;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%239da7b3' stroke-width='1.5' stroke-linecap='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+}
+
 .annunciators { display: flex; gap: 0.4rem; }
 
 .annunciator {
