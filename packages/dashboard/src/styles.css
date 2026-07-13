@@ -23,11 +23,15 @@ body {
   margin: 0;
   background: var(--surface-0);
   color: var(--ink);
+  /* center the panel on both axes, so tall screens get no dead space below */
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .cockpit {
-  max-width: 1200px;
-  margin: 0 auto;
+  width: min(1200px, 100%);
   padding: 1.5rem;
 }
 
