@@ -35,7 +35,7 @@ await app.register(swagger, {
         "computed in memory and never stored; only aggregate counters and " +
         "HyperLogLog sketches persist.",
       version: "0.1.0",
-      license: { name: "MIT", url: "https://opensource.org/licenses/MIT" },
+      license: { name: "AGPL-3.0-only", url: "https://www.gnu.org/licenses/agpl-3.0.html" },
     },
     tags: [
       { name: "ingest", description: "Beacon endpoint used by the snippet" },

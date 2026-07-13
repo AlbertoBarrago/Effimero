@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "description": "Privacy-first web analytics without cookies, localStorage, or fingerprinting",
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "packageManager": "pnpm@10.33.3",
   "engines": {
     "node": ">=20"
