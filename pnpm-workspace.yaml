@@ -1,0 +1,11 @@
+packages:
+  - "packages/*"
+
+onlyBuiltDependencies:
+  - esbuild
+
+# Pinned below latest to satisfy the minimumReleaseAge supply-chain policy;
+# bump once the newer releases age past the cutoff.
+overrides:
+  postcss: 8.5.17
+  tsx: 4.23.0
