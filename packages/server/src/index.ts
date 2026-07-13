@@ -8,7 +8,8 @@ import { Redis } from "ioredis";
 import { config } from "./config.js";
 import { getDailySalt } from "./salt.js";
 import { visitorHash } from "./hash.js";
-import { recordHit, getStats } from "./stats.js";
+import { recordHit, getStats, getLiveVisitors } from "./stats.js";
+import { deriveDimensions } from "./enrichment.js";
 
 const redis = new Redis(config.redisUrl, { maxRetriesPerRequest: 2 });
 
@@ -42,8 +43,9 @@ app.post<{ Body: CollectBody }>("/collect", async (req, reply) => {
 
   const now = new Date();
   const salt = await getDailySalt(redis, now);
+  const userAgent = req.headers["user-agent"] ?? "";
   // req.ip honors X-Forwarded-For only when trustProxy is enabled.
-  const hash = visitorHash(req.ip, req.headers["user-agent"] ?? "", salt, siteId);
+  const hash = visitorHash(req.ip, userAgent, salt, siteId);
 
   await recordHit(redis, {
     siteId,
@@ -51,6 +53,8 @@ app.post<{ Body: CollectBody }>("/collect", async (req, reply) => {
     path: normalizePath(path),
     referrer: normalizeReferrer(referrer),
     day: now.toISOString().slice(0, 10),
+    hour: now.getUTCHours(),
+    dimensions: deriveDimensions(req.ip, userAgent, req.headers["accept-language"]),
   });
 
   // 204 keeps the beacon response as small as possible.
@@ -69,7 +73,17 @@ app.get<{ Params: { siteId: string }; Querystring: { range?: string } }>(
   },
 );
 
-app.get("/health", async () => ({ status: "ok" }));
+app.get<{ Params: { siteId: string } }>("/live/:siteId", async (req, reply) => {
+  if (!SITE_ID_RE.test(req.params.siteId)) {
+    return reply.code(400).send({ error: "invalid siteId" });
+  }
+  return { live: await getLiveVisitors(redis, req.params.siteId) };
+});
+
+app.get("/health", async () => {
+  const redisOk = await redis.ping().then(() => true).catch(() => false);
+  return { status: redisOk ? "ok" : "degraded", redis: redisOk };
+});
 
 // Serve the built snippet (and dashboard, if bundled) from ../public in production.
 const publicDir = join(dirname(fileURLToPath(import.meta.url)), "..", "public");
