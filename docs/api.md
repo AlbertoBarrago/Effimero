@@ -1,0 +1,78 @@
+# API Reference
+
+The canonical, always-current reference is the interactive Swagger UI served by the API itself at **`/docs/api`** (OpenAPI JSON at `/docs/api/json`). This page is a readable summary.
+
+All endpoints are JSON over HTTP. There is no authentication in this version; see the [hardening checklist](self-hosting.md#hardening-checklist).
+
+## POST /collect
+
+Records one pageview. Called by the snippet; you can also call it from any backend.
+
+Request body:
+
+```json
+{
+  "siteId": "my-site",
+  "path": "/pricing",
+  "referrer": "https://news.ycombinator.com/item?id=1"
+}
+```
+
+| Field | Required | Notes |
+|---|---|---|
+| `siteId` | yes | `^[a-zA-Z0-9._-]{1,64}$` |
+| `path` | yes | Max 512 chars. Query string and fragment are stripped server-side. |
+| `referrer` | no | Full URL; reduced to hostname before storage. |
+
+Responses: `204` on success, `400` on schema violation.
+
+The visitor hash is computed server-side from the connection IP and `User-Agent` header, so the payload carries no identity. `Accept-Language` feeds the language counter; GeoIP on the IP feeds the country counter. Both are aggregate-only.
+
+## GET /stats/{siteId}?range={days}
+
+Aggregate statistics for the last `range` days (default 30, capped at `RETENTION_DAYS`).
+
+```json
+{
+  "days": [{ "day": "2026-07-13", "uniques": 132, "pageviews": 410 }],
+  "totals": { "uniques": 132, "pageviews": 410, "pagesPerVisitor": 3.11 },
+  "topPaths": [{ "path": "/", "count": 210 }],
+  "topReferrers": [{ "referrer": "google.com", "count": 88 }],
+  "hours": [0, 0, 3, 12],
+  "browsers": [{ "label": "Chrome", "count": 90 }],
+  "os": [{ "label": "macOS", "count": 60 }],
+  "devices": [{ "label": "desktop", "count": 100 }],
+  "languages": [{ "label": "it", "count": 70 }],
+  "countries": [{ "label": "IT", "count": 75 }]
+}
+```
+
+Accuracy notes:
+
+- Daily `uniques` come from HyperLogLog, standard error about 0.81%.
+- `totals.uniques` merges the daily HLLs. Because salts differ per day, a returning visitor counts once per day: treat it as an upper bound, not true cross-day uniques. `pagesPerVisitor` inherits this caveat.
+- `hours` is a 24-element array of pageviews per UTC hour, summed over the range.
+
+## GET /live/{siteId}
+
+Unique visitors in roughly the last 5 minutes (two 150-second HLL buckets).
+
+```json
+{ "live": 7 }
+```
+
+## GET /health
+
+```json
+{ "status": "ok", "redis": true }
+```
+
+`status` is `degraded` when Redis is unreachable.
+
+## Static assets
+
+| Path | Content |
+|---|---|
+| `/` | Cockpit dashboard |
+| `/effimero.js` | The tracking snippet |
+| `/docs/api` | Swagger UI |
