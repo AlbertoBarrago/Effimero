@@ -5,10 +5,10 @@ services:
       - "3000:3000"
     environment:
       REDIS_URL: redis://redis:6379
-      TRUST_PROXY: "false"
-      ALLOWED_ORIGINS: "*"
-      RETENTION_DAYS: "90"
-      # STATS_API_KEY: change-me   # omit to auto-generate per run (see logs); "disabled" opens /stats
+      TRUST_PROXY: "${TRUST_PROXY:-false}"
+      ALLOWED_ORIGINS: "${ALLOWED_ORIGINS:-*}"
+      RETENTION_DAYS: "${RETENTION_DAYS:-90}"
+      STATS_API_KEY: "${STATS_API_KEY:-}"
     depends_on:
       - redis
     restart: unless-stopped

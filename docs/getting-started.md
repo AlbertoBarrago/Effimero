@@ -11,6 +11,7 @@ This guide takes you from zero to live analytics in about five minutes.
 
 ```sh
 git clone https://github.com/albertobarrago/effimero && cd effimero
+cp .env.sample .env
 docker compose up -d
 ```
 
@@ -52,11 +53,10 @@ The log line looks like this:
 STATS_API_KEY not set, generated one for this run: <key>
 ```
 
-Open the dashboard at `http://localhost:3000/` or `https://your-host/`, paste the key when prompted, and you are in. The generated key changes whenever the server restarts. Set `STATS_API_KEY` in `docker-compose.yml` to keep a stable key:
+Open the dashboard at `http://localhost:3000/` or `https://your-host/`, paste the key when prompted, and you are in. The generated key changes whenever the server restarts. Set `STATS_API_KEY` in `.env` to keep a stable key:
 
-```yaml
-environment:
-  STATS_API_KEY: "change-me"
+```dotenv
+STATS_API_KEY=change-me
 ```
 
 ## 4. Watch the data arrive

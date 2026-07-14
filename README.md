@@ -40,6 +40,7 @@ flowchart LR
 ## Quick start (self-hosted)
 
 ```sh
+cp .env.sample .env
 docker compose up -d
 ```
 
@@ -51,7 +52,7 @@ Then add the snippet to your site:
         data-endpoint="https://your-host/collect" defer></script>
 ```
 
-View stats through the dashboard at `https://your-host/`. The dashboard asks for the `STATS_API_KEY`; if you did not set one, retrieve the generated key from the server logs:
+View stats through the dashboard at `https://your-host/`. The dashboard asks for the `STATS_API_KEY`; set it in `.env`, or retrieve the generated key from the server logs if you left it empty:
 
 ```sh
 docker compose logs effimero | grep generated
@@ -78,7 +79,7 @@ pnpm --filter @effimero/snippet build         # builds dist/effimero.js
 | `ALLOWED_ORIGINS` | `*` | Comma-separated CORS origins |
 | `TRUST_PROXY` | `false` | Set `true` behind a reverse proxy so the real client IP is read from `X-Forwarded-For` |
 | `RETENTION_DAYS` | `90` | Days of aggregate stats kept in Redis |
-| `STATS_API_KEY` | auto-generated | Bearer key protecting `/stats`, `/live`, and `/sites`. Unset: a random key is generated and logged at boot. Set this explicitly to keep dashboard access stable across restarts. `disabled`: read endpoints are public |
+| `STATS_API_KEY` | auto-generated | Bearer key protecting `/stats`, `/live`, and `/sites`. Set it in `.env` to keep dashboard access stable across restarts. Empty/unset: a random key is generated and logged at boot. `disabled`: read endpoints are public |
 
 > **Important:** if Effimero runs behind nginx/Caddy/Traefik, set `TRUST_PROXY=true`, otherwise every visitor appears to come from the proxy's IP and unique counts collapse to ~1.
 

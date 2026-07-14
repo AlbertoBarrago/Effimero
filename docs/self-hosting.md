@@ -7,6 +7,7 @@ Effimero ships as a single Docker image plus Redis. This page covers production 
 The repository includes a production-ready `docker-compose.yml`:
 
 ```sh
+cp .env.sample .env
 docker compose up -d
 ```
 
@@ -23,7 +24,7 @@ All configuration is via environment variables on the `effimero` service:
 | `ALLOWED_ORIGINS` | `*` | Comma-separated list of CORS origins allowed to POST hits. Use your site origins in production. |
 | `TRUST_PROXY` | `false` | Trust `X-Forwarded-For` for the client IP. Required behind any reverse proxy. |
 | `RETENTION_DAYS` | `90` | How long aggregate daily stats are kept in Redis. |
-| `STATS_API_KEY` | auto-generated | Bearer key required by `/stats`, `/live`, and `/sites`. When unset, a random key is generated and logged once at boot. Set `disabled` to make read endpoints public. |
+| `STATS_API_KEY` | auto-generated | Bearer key required by `/stats`, `/live`, and `/sites`. Set it in `.env` to keep dashboard access stable across restarts. Empty/unset: a random key is generated and logged once at boot. Set `disabled` to make read endpoints public. |
 
 ## Dashboard access key
 
@@ -40,16 +41,13 @@ curl -H "Authorization: Bearer <STATS_API_KEY>" \
   "http://localhost:3000/stats/my-site?range=30"
 ```
 
-Auto-generated keys are convenient for local testing, but they change on restart. For production or long-running self-hosted instances, set a stable key:
+Auto-generated keys are convenient for local testing, but they change on restart. For production or long-running self-hosted instances, set a stable key in `.env`:
 
-```yaml
-services:
-  effimero:
-    environment:
-      STATS_API_KEY: "change-me"
+```dotenv
+STATS_API_KEY=change-me
 ```
 
-To rotate it, change the value and restart the `effimero` service. Use `STATS_API_KEY=disabled` only when the read endpoints can be public.
+To rotate it, change the `.env` value and restart the `effimero` service. Use `STATS_API_KEY=disabled` only when the read endpoints can be public.
 
 ## Reverse proxy
 
