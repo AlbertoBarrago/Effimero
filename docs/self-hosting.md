@@ -13,6 +13,29 @@ docker compose up -d
 
 Redis persists to a named volume with RDB snapshots every 5 minutes. Aggregate stats survive restarts; the daily salt intentionally lives only in Redis memory keys with a TTL.
 
+## Small indie deployment
+
+For a small indie project, a single low-cost VPS is enough. The simplest setup to try first is:
+
+- Hetzner Cloud CX23, or equivalent small VPS
+- Ubuntu LTS
+- Docker and Docker Compose
+- Caddy in front for HTTPS
+- Hetzner backups enabled
+
+Expected cost is roughly 5-6 EUR/month for the server plus backups, excluding the domain. This keeps the deployment boring: one VM, one Docker Compose stack, one Redis volume, no managed services.
+
+Recommended `.env` values for this shape:
+
+```dotenv
+STATS_API_KEY=<strong-random-key>
+TRUST_PROXY=true
+ALLOWED_ORIGINS=https://your-site.example
+RETENTION_DAYS=90
+```
+
+Use `TRUST_PROXY=true` only when Effimero is actually behind Caddy, nginx, Traefik, or another reverse proxy that forwards the real client IP.
+
 ## Configuration reference
 
 All configuration is via environment variables on the `effimero` service:
