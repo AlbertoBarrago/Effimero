@@ -96,8 +96,13 @@ curl http://localhost:3000/health   # {"status":"ok","redis":true}</code></pre>
   </table>
   <p>The snippet weighs about 700 bytes, tracks SPA navigations (pushState and popstate), and disables itself when the browser sends Do Not Track or Global Privacy Control.</p>
 
-  <h3>3. Watch the data</h3>
-  <p>Open the dashboard at <code>https://your-host/</code>: live visitors, daily uniques and pageviews, top pages and referrers, browsers, OS, devices, languages, countries, and pageviews by hour.</p>
+  <h3>3. Unlock the dashboard</h3>
+  <p>Read endpoints are protected by <code>STATS_API_KEY</code>. If you did not set one, Effimero generates a key on startup:</p>
+  <pre><code>docker compose logs effimero | grep generated</code></pre>
+  <p>Open the dashboard at <code>http://localhost:3000/</code> or <code>https://your-host/</code>, paste the key when prompted, and enter your site id. Auto-generated keys change whenever the server restarts; set <code>STATS_API_KEY</code> in Compose to keep access stable.</p>
+
+  <h3>4. Watch the data</h3>
+  <p>The dashboard shows live visitors, daily uniques and pageviews, top pages and referrers, browsers, OS, devices, languages, countries, and pageviews by hour.</p>
 
   <h2 id="self-hosting">Self-hosting &amp; configuration</h2>
   <p>Effimero is one Docker image plus Redis. All configuration is environment variables:</p>
@@ -108,8 +113,17 @@ curl http://localhost:3000/health   # {"status":"ok","redis":true}</code></pre>
     <tr><td><code>ALLOWED_ORIGINS</code></td><td><code>*</code></td><td>Comma-separated CORS origins allowed to POST hits. Restrict in production.</td></tr>
     <tr><td><code>TRUST_PROXY</code></td><td><code>false</code></td><td>Trust <code>X-Forwarded-For</code>. Required behind any reverse proxy.</td></tr>
     <tr><td><code>RETENTION_DAYS</code></td><td><code>90</code></td><td>Days of aggregate stats kept in Redis</td></tr>
-    <tr><td><code>STATS_API_KEY</code></td><td>auto-generated</td><td>Bearer key protecting <code>/stats</code> and <code>/live</code>. Unset: a random key is generated and logged once at boot (<code>docker compose logs effimero | grep generated</code>). Set <code>disabled</code> to make reads public.</td></tr>
+    <tr><td><code>STATS_API_KEY</code></td><td>auto-generated</td><td>Bearer key protecting <code>/stats</code>, <code>/live</code>, and <code>/sites</code>. Unset: a random key is generated and logged once at boot (<code>docker compose logs effimero | grep generated</code>). Set an explicit value to keep dashboard access stable across restarts. Set <code>disabled</code> to make reads public.</td></tr>
   </table>
+
+  <h3>Dashboard access key</h3>
+  <p>The dashboard uses the same bearer key as API reads. Retrieve the generated key with:</p>
+  <pre><code>docker compose logs effimero | grep generated</code></pre>
+  <p>For production, set a stable value and rotate it by changing the environment variable and restarting the <code>effimero</code> service.</p>
+  <pre><code>services:
+  effimero:
+    environment:
+      STATS_API_KEY: "change-me"</code></pre>
 
   <div class="callout"><p><strong>The one setting that bites:</strong> behind nginx, Caddy, or Traefik you must set <code>TRUST_PROXY=true</code>, otherwise every visitor appears to come from the proxy IP and unique counts flatline at 1.</p></div>
 
@@ -124,7 +138,7 @@ curl http://localhost:3000/health   # {"status":"ok","redis":true}</code></pre>
   <ul>
     <li>Restrict <code>ALLOWED_ORIGINS</code> to the sites embedding the snippet.</li>
     <li>Keep Redis inside the Docker network.</li>
-    <li><code>/stats</code> and <code>/live</code> are read-only but unauthenticated: if your numbers are sensitive, gate them at the proxy while leaving <code>/collect</code> and <code>/effimero.js</code> public.</li>
+    <li>Keep <code>STATS_API_KEY</code> set to a strong value. Optionally add proxy auth for the dashboard, while leaving <code>/collect</code> and <code>/effimero.js</code> public.</li>
     <li>Multiple server replicas are safe: salt creation is atomic (<code>SET NX</code>), the server is stateless.</li>
   </ul>
 

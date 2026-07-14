@@ -23,7 +23,33 @@ All configuration is via environment variables on the `effimero` service:
 | `ALLOWED_ORIGINS` | `*` | Comma-separated list of CORS origins allowed to POST hits. Use your site origins in production. |
 | `TRUST_PROXY` | `false` | Trust `X-Forwarded-For` for the client IP. Required behind any reverse proxy. |
 | `RETENTION_DAYS` | `90` | How long aggregate daily stats are kept in Redis. |
-| `STATS_API_KEY` | auto-generated | Bearer key required by `/stats` and `/live`. When unset, a random key is generated and logged once at boot. Set `disabled` to make read endpoints public. |
+| `STATS_API_KEY` | auto-generated | Bearer key required by `/stats`, `/live`, and `/sites`. When unset, a random key is generated and logged once at boot. Set `disabled` to make read endpoints public. |
+
+## Dashboard access key
+
+The dashboard reads `/stats`, `/live`, and `/sites`, so it needs the same bearer key as the API. If `STATS_API_KEY` is not set, Effimero generates a random key for the current server run:
+
+```sh
+docker compose logs effimero | grep generated
+```
+
+Use the value after `generated one for this run:` in the dashboard prompt, or in API requests:
+
+```sh
+curl -H "Authorization: Bearer <STATS_API_KEY>" \
+  "http://localhost:3000/stats/my-site?range=30"
+```
+
+Auto-generated keys are convenient for local testing, but they change on restart. For production or long-running self-hosted instances, set a stable key:
+
+```yaml
+services:
+  effimero:
+    environment:
+      STATS_API_KEY: "change-me"
+```
+
+To rotate it, change the value and restart the `effimero` service. Use `STATS_API_KEY=disabled` only when the read endpoints can be public.
 
 ## Reverse proxy
 
@@ -61,7 +87,7 @@ server {
 
 - Restrict `ALLOWED_ORIGINS` to the sites that actually embed the snippet.
 - Do not expose Redis outside the Docker network.
-- The `/stats` and `/live` endpoints are read-only but unauthenticated in this version. If your traffic numbers are sensitive, put them behind your proxy's auth (basic auth or an OAuth proxy) while leaving `/collect` and `/effimero.js` public.
+- Keep `STATS_API_KEY` set to a strong value. Optionally add proxy auth for the dashboard, while leaving `/collect` and `/effimero.js` public.
 - Keep `RETENTION_DAYS` as low as your reporting needs allow. Less retained data is always the better privacy default.
 
 ## Scaling notes

@@ -46,11 +46,22 @@ Read endpoints are protected by an access key. On first boot Effimero generates 
 docker compose logs effimero | grep generated
 ```
 
-Open the dashboard, paste the key when prompted, and you are in. Set `STATS_API_KEY` in `docker-compose.yml` to keep a stable key across restarts.
+The log line looks like this:
+
+```text
+STATS_API_KEY not set, generated one for this run: <key>
+```
+
+Open the dashboard at `http://localhost:3000/` or `https://your-host/`, paste the key when prompted, and you are in. The generated key changes whenever the server restarts. Set `STATS_API_KEY` in `docker-compose.yml` to keep a stable key:
+
+```yaml
+environment:
+  STATS_API_KEY: "change-me"
+```
 
 ## 4. Watch the data arrive
 
-Open the dashboard at `https://your-host/`, enter your site id, and you will see:
+Enter your site id in the dashboard and you will see:
 
 - live visitors (rolling 5-minute window)
 - daily unique visitors and pageviews
@@ -79,6 +90,5 @@ Click around it and watch hits land in the dashboard.
 ## Next steps
 
 - How the access key works and how to rotate it: see [Self-Hosting](self-hosting.md).
-
 - Put Effimero behind a reverse proxy: see [Self-Hosting](self-hosting.md). Do not skip the `TRUST_PROXY` note.
 - Understand what is (and is not) stored: see [Privacy Model](privacy.md).
