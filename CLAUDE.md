@@ -17,7 +17,7 @@ pnpm --filter @effimero/dashboard dev # Vite on :5180, proxies /stats /live /sit
 docker compose up -d --build          # full stack (server+snippet+dashboard image, plus Redis)
 ```
 
-There is no test suite yet. Verification is done end-to-end: seed hits with `curl -X POST localhost:3000/collect -H 'Content-Type: text/plain' -d '{"siteId":"my-site","path":"/x"}'`, read back via `/stats/my-site?range=1` with the bearer key, or click through `packages/test-site` (serve it with `python3 -m http.server 8080 -d packages/test-site`).
+Run the server test suite with `pnpm --filter @effimero/server test`. End-to-end verification is still useful for route wiring: seed hits with `curl -X POST localhost:3000/collect -H 'Content-Type: text/plain' -d '{"siteId":"my-site","path":"/x"}'`, read back via `/stats/my-site?range=1` with the bearer key, or click through `packages/test-site` (serve it with `python3 -m http.server 8080 -d packages/test-site`).
 
 The read endpoints (`/stats`, `/live`, `/sites`) require `Authorization: Bearer <STATS_API_KEY>`. When the env var is unset the server generates a key per run and logs it once: `docker compose logs effimero | grep generated`. `STATS_API_KEY=disabled` opens them.
 
@@ -40,6 +40,7 @@ Data flow: snippet → `POST /collect` (public) → salt + hash + enrichment in 
 ## Non-obvious constraints
 
 - **The beacon is sent as `text/plain`, not `application/json`**: a JSON content type forces a CORS preflight that browsers refuse to pair with `sendBeacon`, silently dropping hits. `index.ts` has a matching `text/plain` content-type parser. Do not "fix" either side.
+- Request logging must stay sparse. `privacyLogger` deliberately omits IP, User-Agent, headers, socket metadata, and forwarded-for data.
 - The snippet self-disables on DNT/Global Privacy Control by design (this is why local testing may show no beacons; use a clean browser profile).
 - `TRUST_PROXY=true` is required behind any reverse proxy, otherwise all visitors collapse into one hash.
 - pnpm settings (`onlyBuiltDependencies`, `overrides`) live in `pnpm-workspace.yaml`, not in `package.json` (pnpm 10). `packageManager` in root `package.json` pins the version corepack uses in Docker.

@@ -14,11 +14,13 @@ import { getDailySalt } from "./salt.js";
 import { visitorHash } from "./hash.js";
 import { recordHit, getStats, getLiveVisitors, getSites } from "./stats.js";
 import { deriveDimensions } from "./enrichment.js";
+import { privacyLogger } from "./logging.js";
+import { normalizePath, normalizeReferrer } from "./normalization.js";
 
 const redis = new Redis(config.redisUrl, { maxRetriesPerRequest: 2 });
 
 const app = Fastify({
-  logger: true,
+  logger: privacyLogger,
   trustProxy: config.trustProxy,
 });
 
@@ -124,22 +126,6 @@ app.get("/health", { schema: healthSchema }, async () => {
 const publicDir = join(dirname(fileURLToPath(import.meta.url)), "..", "public");
 if (existsSync(publicDir)) {
   await app.register(fastifyStatic, { root: publicDir });
-}
-
-/** Strips query string and fragment; analytics only needs the path. */
-function normalizePath(path: string): string {
-  const cut = path.split(/[?#]/)[0] || "/";
-  return cut.startsWith("/") ? cut : `/${cut}`;
-}
-
-/** Reduces referrer to its hostname to avoid storing full external URLs. */
-function normalizeReferrer(referrer: string | undefined): string | null {
-  if (!referrer) return null;
-  try {
-    return new URL(referrer).hostname || null;
-  } catch {
-    return null;
-  }
 }
 
 app.listen({ port: config.port, host: "0.0.0.0" }).catch((err) => {
