@@ -5,6 +5,13 @@
   "description": "Privacy-first web analytics without cookies, localStorage, or fingerprinting",
   "license": "AGPL-3.0-only",
   "packageManager": "pnpm@10.33.3",
+  "scripts": {
+    "dev:server": "pnpm --filter @effimero/server dev",
+    "dev:dashboard": "pnpm --filter @effimero/dashboard dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm --filter @effimero/server test"
+  },
   "engines": {
     "node": ">=20"
   }
