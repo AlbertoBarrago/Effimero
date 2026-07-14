@@ -83,11 +83,13 @@ pnpm --filter @effimero/snippet build         # builds dist/effimero.js
 
 > **Important:** if Effimero runs behind nginx/Caddy/Traefik, set `TRUST_PROXY=true`, otherwise every visitor appears to come from the proxy's IP and unique counts collapse to ~1.
 
-## Packages
+## Repository layout
 
-- `packages/server`: Fastify ingest + stats API
+- `apps/server`: Fastify ingest + stats API
+- `apps/dashboard`: React dashboard (uniques/day, pageviews, top pages/referrers)
+- `apps/website`: static marketing/docs site
 - `packages/snippet`: ~1 KB browser snippet (SPA-aware, respects DNT/GPC)
-- `packages/dashboard`: React dashboard (uniques/day, pageviews, top pages/referrers)
+- `examples/test-site`: plain HTML test site for local hit generation
 
 ## Documentation
 

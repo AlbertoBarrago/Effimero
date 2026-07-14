@@ -4,13 +4,13 @@ WORKDIR /app
 RUN corepack enable
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
 COPY tsconfig.base.json ./
-COPY packages/server/package.json packages/server/
+COPY apps/server/package.json apps/server/
+COPY apps/dashboard/package.json apps/dashboard/
 COPY packages/snippet/package.json packages/snippet/
-COPY packages/dashboard/package.json packages/dashboard/
 RUN pnpm install --frozen-lockfile
-COPY packages/server packages/server
+COPY apps/server apps/server
+COPY apps/dashboard apps/dashboard
 COPY packages/snippet packages/snippet
-COPY packages/dashboard packages/dashboard
 RUN pnpm -r build
 
 FROM node:22-alpine
@@ -18,10 +18,10 @@ WORKDIR /app
 ENV NODE_ENV=production
 RUN corepack enable
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
-COPY packages/server/package.json packages/server/
+COPY apps/server/package.json apps/server/
 RUN pnpm install --filter @effimero/server --prod
-COPY --from=build /app/packages/server/dist packages/server/dist
-COPY --from=build /app/packages/dashboard/dist packages/server/public
-COPY --from=build /app/packages/snippet/dist/effimero.js packages/server/public/effimero.js
+COPY --from=build /app/apps/server/dist apps/server/dist
+COPY --from=build /app/apps/dashboard/dist apps/server/public
+COPY --from=build /app/packages/snippet/dist/effimero.js apps/server/public/effimero.js
 EXPOSE 3000
-CMD ["node", "packages/server/dist/index.js"]
+CMD ["node", "apps/server/dist/index.js"]

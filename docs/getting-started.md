@@ -79,10 +79,10 @@ pnpm --filter @effimero/dashboard dev     # dashboard on :5180
 pnpm --filter @effimero/snippet build     # rebuilds dist/effimero.js
 ```
 
-A ready-made test site lives in `packages/test-site`; serve it with any static server:
+A ready-made test site lives in `examples/test-site`; serve it with any static server:
 
 ```sh
-python3 -m http.server 8080 -d packages/test-site
+python3 -m http.server 8080 -d examples/test-site
 ```
 
 Click around it and watch hits land in the dashboard.

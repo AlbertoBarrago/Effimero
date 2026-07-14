@@ -17,15 +17,15 @@ pnpm --filter @effimero/dashboard dev # Vite on :5180, proxies /stats /live /sit
 docker compose up -d --build          # full stack (server+snippet+dashboard image, plus Redis)
 ```
 
-Run the server test suite with `pnpm --filter @effimero/server test`. End-to-end verification is still useful for route wiring: seed hits with `curl -X POST localhost:3000/collect -H 'Content-Type: text/plain' -d '{"siteId":"my-site","path":"/x"}'`, read back via `/stats/my-site?range=1` with the bearer key, or click through `packages/test-site` (serve it with `python3 -m http.server 8080 -d packages/test-site`).
+Run the server test suite with `pnpm --filter @effimero/server test`. End-to-end verification is still useful for route wiring: seed hits with `curl -X POST localhost:3000/collect -H 'Content-Type: text/plain' -d '{"siteId":"my-site","path":"/x"}'`, read back via `/stats/my-site?range=1` with the bearer key, or click through `examples/test-site` (serve it with `python3 -m http.server 8080 -d examples/test-site`).
 
 The read endpoints (`/stats`, `/live`, `/sites`) require `Authorization: Bearer <STATS_API_KEY>`. When the env var is unset the server generates a key per run and logs it once: `docker compose logs effimero | grep generated`. `STATS_API_KEY=disabled` opens them.
 
 ## Architecture
 
-pnpm workspaces monorepo. `packages/server` is the core; `snippet`, `dashboard`, `website`, `test-site` are satellites. The Dockerfile builds everything into one image where the server serves the dashboard and `effimero.js` as static files from `packages/server/public`.
+pnpm workspaces monorepo. `apps/server` is the core application, `apps/dashboard` and `apps/website` are app surfaces, `packages/snippet` is the reusable browser script, and `examples/test-site` is for manual hit generation. The Dockerfile builds everything into one image where the server serves the dashboard and `effimero.js` as static files from `apps/server/public`.
 
-Server modules (`packages/server/src`) are deliberately single-responsibility:
+Server modules (`apps/server/src`) are deliberately single-responsibility:
 
 - `index.ts` — HTTP wiring only; routes call one function each
 - `salt.ts` — daily salt via Redis `SET NX` + TTL (atomic across replicas, no cron; the salt must never be logged or persisted elsewhere)
@@ -44,7 +44,7 @@ Data flow: snippet → `POST /collect` (public) → salt + hash + enrichment in 
 - The snippet self-disables on DNT/Global Privacy Control by design (this is why local testing may show no beacons; use a clean browser profile).
 - `TRUST_PROXY=true` is required behind any reverse proxy, otherwise all visitors collapse into one hash.
 - pnpm settings (`onlyBuiltDependencies`, `overrides`) live in `pnpm-workspace.yaml`, not in `package.json` (pnpm 10). `packageManager` in root `package.json` pins the version corepack uses in Docker.
-- `.dockerignore` excluding `node_modules` is load-bearing: without it, `COPY packages/...` overwrites the image's installed symlinks and the build breaks.
+- `.dockerignore` excluding `node_modules` is load-bearing: without it, workspace `COPY` steps overwrite the image's installed symlinks and the build breaks.
 - Range-wide `totals.uniques` merges daily-salted HLLs: it is an upper bound, not true cross-day uniques. Keep this caveat wherever the number is surfaced.
-- Docs live twice: markdown in `docs/` (GitHub) and the HTML page `packages/website/docs/index.html` (served with the site). Config/API changes must update both, plus the env table in `README.md`.
+- Docs live twice: markdown in `docs/` (GitHub) and the HTML page `apps/website/docs/index.html` (served with the site). Config/API changes must update both, plus the env table in `README.md`.
 - Prose style: no em-dashes in any user-facing copy; the original service that inspired the approach is called Margin (`inmargin.io`) and keeps its own name in credits.

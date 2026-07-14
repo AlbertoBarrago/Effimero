@@ -4,11 +4,13 @@
 
 ```
 effimero/
-  packages/
+  apps/
     server/       Fastify API: ingest, stats, swagger, static serving
-    snippet/      browser tracking script (~700 B, esbuild IIFE)
     dashboard/    React cockpit dashboard (Vite)
     website/      static presentation site
+  packages/
+    snippet/      browser tracking script (~700 B, esbuild IIFE)
+  examples/
     test-site/    plain HTML pages for local hit generation
   docs/           this documentation
   Dockerfile      multi-stage build: server + snippet + dashboard in one image
