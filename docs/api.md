@@ -9,7 +9,7 @@ All endpoints are JSON over HTTP.
 - The **admin key** (`STATS_API_KEY`, auto-generated and logged at boot when not configured) — required for the `/admin/*` registry routes and grants read access to every site.
 - A **per-site read token** — issued when a site is registered; grants read access to that one site only. Presenting it for any other site returns `403`.
 
-Read routes (`/stats`, `/live`, `/sites`) accept either credential. `/collect` is public but only records hits for **registered** sites (see `/admin/sites`); hits for unknown sites are silently dropped.
+Read routes (`/stats`, `/live`, `/sites`) accept either credential. `/collect` is public but only records hits for **registered** sites (see `/admin/sites`); hits for unknown sites — or, when a site restricts its origins, from a non-matching `Origin` — are silently dropped.
 
 ## POST /collect
 
@@ -86,10 +86,11 @@ All `/admin/*` routes require the **admin key** — a per-site read token cannot
 |---|---|
 | `POST /admin/sites` | Register a site. Body: `{ "siteId": "my-site", "allowedOrigins": [] }`. Returns the config plus a one-time `readToken`. |
 | `GET /admin/sites` | List registered site configs (no token material is returned). |
+| `PATCH /admin/sites/{siteId}` | Replace `allowedOrigins`. Body: `{ "allowedOrigins": ["https://example.com"] }`. Does not touch the read token. `404` if unknown. |
 | `DELETE /admin/sites/{siteId}` | Remove a site and invalidate its read token. `204`, or `404` if unknown. |
 | `POST /admin/sites/{siteId}/token` | Rotate the read token; the previous one stops working. Returns the new `readToken`. |
 
-`allowedOrigins` is stored but not yet enforced (per-site Origin validation is planned). The `readToken` is shown only once; only its SHA-256 is stored.
+`allowedOrigins` entries are origins (`https://host[:port]`, no path). An empty list accepts any origin; a non-empty list records hits only from a matching request `Origin` (matched case-insensitively, trailing slash ignored). The `readToken` is shown only once; only its SHA-256 is stored.
 
 ## GET /health
 

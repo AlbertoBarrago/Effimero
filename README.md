@@ -52,8 +52,19 @@ Registration returns a **per-site read token**, shown only once:
 curl -X POST https://your-host/admin/sites \
      -H "Authorization: Bearer <STATS_API_KEY>" \
      -H "Content-Type: application/json" \
-     -d '{"siteId":"my-site"}'
+     -d '{"siteId":"my-site","allowedOrigins":["https://my-site.com"]}'
 # → { "siteId": "my-site", ..., "readToken": "…store-this-now…" }
+```
+
+`allowedOrigins` restricts which origins may record hits for the site: a hit is
+kept only if its request `Origin` matches an entry. Leave it empty (or omit it)
+to accept any origin. Update it later without rotating the token:
+
+```sh
+curl -X PATCH https://your-host/admin/sites/my-site \
+     -H "Authorization: Bearer <STATS_API_KEY>" \
+     -H "Content-Type: application/json" \
+     -d '{"allowedOrigins":["https://my-site.com","https://www.my-site.com"]}'
 ```
 
 Then add the snippet to your site:
@@ -99,7 +110,7 @@ pnpm --filter @effimero/snippet build         # builds dist/effimero.js
 |---|---|---|
 | `PORT` | `3000` | HTTP port |
 | `REDIS_URL` | `redis://localhost:6379` | Redis connection |
-| `ALLOWED_ORIGINS` | `*` | Comma-separated CORS origins |
+| `ALLOWED_ORIGINS` | `*` | Comma-separated CORS origins (global response headers). Per-site ingest restriction is configured per site via `allowedOrigins`, not here |
 | `TRUST_PROXY` | `false` | Set `true` behind a reverse proxy so the real client IP is read from `X-Forwarded-For` |
 | `RETENTION_DAYS` | `90` | Days of aggregate stats kept in Redis |
 | `STATS_API_KEY` | auto-generated | **Admin** bearer key: manages the site registry (`/admin/*`) and reads every site (`/stats`, `/live`, `/sites`). Per-site read tokens (issued at registration) grant read access to a single site. Set it in `.env` to keep access stable across restarts. Empty/unset: a random key is generated and logged at boot. `disabled`: all endpoints are public |

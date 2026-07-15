@@ -96,6 +96,20 @@ export async function isRegistered(redis: Redis, siteId: string): Promise<boolea
   return active === "1";
 }
 
+/**
+ * Updates a registered site's allowed origins without touching its read token.
+ * Returns false if the site was never registered.
+ */
+export async function updateAllowedOrigins(
+  redis: Redis,
+  siteId: string,
+  allowedOrigins: string[],
+): Promise<boolean> {
+  if (!(await isRegistered(redis, siteId))) return false;
+  await redis.hset(configKey(siteId), { allowedOrigins: JSON.stringify(allowedOrigins) });
+  return true;
+}
+
 /** All registered site configs, ordered by siteId. */
 export async function listSites(redis: Redis): Promise<SiteConfig[]> {
   const ids = (await redis.smembers(REGISTRY_SET)).sort();

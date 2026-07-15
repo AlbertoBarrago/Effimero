@@ -18,13 +18,23 @@ import {
   listSitesSchema,
   deleteSiteSchema,
   rotateTokenSchema,
+  updateSiteSchema,
 } from "./schemas.js";
 import { resolveStatsKey, requireStatsKey, authorizeRead, hashToken } from "./auth.js";
 import { config } from "./config.js";
 import { getDailySalt } from "./salt.js";
 import { visitorHash } from "./hash.js";
 import { recordHit, getStats, getLiveVisitors, getSites } from "./stats.js";
-import { registerSite, listSites, removeSite, isRegistered, setReadToken } from "./registry.js";
+import {
+  registerSite,
+  listSites,
+  removeSite,
+  isRegistered,
+  setReadToken,
+  getSiteConfig,
+  updateAllowedOrigins,
+} from "./registry.js";
+import { isOriginAllowed } from "./origins.js";
 import { deriveDimensions } from "./enrichment.js";
 import { privacyLogger } from "./logging.js";
 import { normalizePath, normalizeReferrer } from "./normalization.js";
@@ -86,9 +96,11 @@ interface CollectBody {
 app.post<{ Body: CollectBody }>("/collect", { schema: collectSchema }, async (req, reply) => {
   const { siteId, path, referrer } = req.body;
 
-  // Only registered sites are collected. Unknown siteIds are dropped silently
-  // (204, not 404) so the endpoint can't be used to enumerate registered sites.
-  if (!(await isRegistered(redis, siteId))) {
+  // Drop silently (204, not 404) for unregistered/inactive sites or a request
+  // Origin outside the site's allow-list, so the endpoint leaks nothing and
+  // cannot be used to inject or enumerate stats.
+  const site = await getSiteConfig(redis, siteId);
+  if (!site?.active || !isOriginAllowed(req.headers.origin, site.allowedOrigins)) {
     return reply.code(204).send();
   }
 
@@ -171,6 +183,18 @@ app.delete<{ Params: { siteId: string } }>(
     const removed = await removeSite(redis, req.params.siteId);
     if (!removed) return reply.code(404).send({ error: "site not registered" });
     return reply.code(204).send();
+  },
+);
+
+// Update a site's allowed origins without rotating its read token.
+app.patch<{ Params: { siteId: string }; Body: { allowedOrigins: string[] } }>(
+  "/admin/sites/:siteId",
+  { schema: updateSiteSchema, preHandler: adminAuth },
+  async (req, reply) => {
+    const updated = await updateAllowedOrigins(redis, req.params.siteId, req.body.allowedOrigins);
+    if (!updated) return reply.code(404).send({ error: "site not registered" });
+    const config = await getSiteConfig(redis, req.params.siteId);
+    return reply.code(200).send(config);
   },
 );
 

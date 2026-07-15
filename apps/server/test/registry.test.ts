@@ -9,6 +9,7 @@ import {
   removeSite,
   setReadToken,
   resolveTokenSite,
+  updateAllowedOrigins,
 } from "../src/registry.js";
 
 /**
@@ -186,4 +187,21 @@ test("removeSite invalidates the site's read token", async () => {
   await removeSite(redis, "site-a");
 
   assert.equal(await resolveTokenSite(redis, "hash-a"), null);
+});
+
+test("updateAllowedOrigins replaces origins and leaves the token intact", async () => {
+  const redis = fresh();
+  await registerSite(redis, "site-a", ["https://old.example"], CREATED_AT);
+  await setReadToken(redis, "site-a", "hash-a");
+
+  const ok = await updateAllowedOrigins(redis, "site-a", ["https://new.example"]);
+
+  assert.equal(ok, true);
+  assert.deepEqual((await getSiteConfig(redis, "site-a"))?.allowedOrigins, ["https://new.example"]);
+  assert.equal(await resolveTokenSite(redis, "hash-a"), "site-a");
+});
+
+test("updateAllowedOrigins reports false for an unregistered site", async () => {
+  const redis = fresh();
+  assert.equal(await updateAllowedOrigins(redis, "ghost", ["https://x.example"]), false);
 });

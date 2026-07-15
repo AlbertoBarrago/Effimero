@@ -41,6 +41,8 @@ The response includes a **per-site read token**, shown only once — store it no
 { "siteId": "my-site", "allowedOrigins": [], "active": true, "createdAt": "…", "readToken": "…" }
 ```
 
+To restrict which origins may record hits, pass `allowedOrigins` (e.g. `{"siteId":"my-site","allowedOrigins":["https://my-site.com"]}`) — a hit is kept only if its request `Origin` matches. Leave it empty to accept any origin, and change it later with `PATCH /admin/sites/my-site` without rotating the token.
+
 List registered sites with `GET /admin/sites`, remove one with `DELETE /admin/sites/my-site`, and rotate a lost token with `POST /admin/sites/my-site/token` (same header).
 
 ## 3. Add the snippet to your site

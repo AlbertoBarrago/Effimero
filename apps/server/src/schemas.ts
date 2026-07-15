@@ -195,6 +195,15 @@ export const sitesSchema = {
 
 const SITE_ID = { type: "string", pattern: "^[a-zA-Z0-9._-]{1,64}$" } as const;
 
+/** Array of origin strings, e.g. "https://example.com" (scheme + host[:port], no path). */
+const originsArray = {
+  type: "array",
+  items: { type: "string", pattern: "^https?://[^/]+$", maxLength: 253 },
+  maxItems: 50,
+  default: [],
+  description: "Origins permitted to send hits. Empty means any.",
+} as const;
+
 const siteConfigObject = {
   type: "object",
   properties: {
@@ -211,21 +220,15 @@ export const registerSiteSchema = {
   summary: "Register a site",
   description:
     "Registers a site so /collect will accept hits for it. Ingest rejects any " +
-    "siteId that is not registered. allowedOrigins is stored for future per-site " +
-    "Origin validation and is not enforced yet.",
+    "siteId that is not registered. When allowedOrigins is non-empty, only hits " +
+    "whose Origin matches an entry are recorded; empty means any origin.",
   security: [{ bearerAuth: [] }],
   body: {
     type: "object",
     required: ["siteId"],
     properties: {
       siteId: SITE_ID,
-      allowedOrigins: {
-        type: "array",
-        items: { type: "string", maxLength: 253 },
-        maxItems: 50,
-        default: [],
-        description: "Origins permitted to send hits. Empty means any (not yet enforced).",
-      },
+      allowedOrigins: originsArray,
     },
   },
   response: {
@@ -241,6 +244,29 @@ export const registerSiteSchema = {
       required: [...siteConfigObject.required, "readToken"],
     },
     400: { type: "object", properties: { error: { type: "string" } } },
+    401: { type: "object", properties: { error: { type: "string" } }, description: "Missing or invalid access key." },
+  },
+} as const;
+
+export const updateSiteSchema = {
+  tags: ["admin"],
+  summary: "Update a site's allowed origins",
+  description: "Replaces the site's allowedOrigins list. Does not affect the read token.",
+  security: [{ bearerAuth: [] }],
+  params: {
+    type: "object",
+    required: ["siteId"],
+    properties: { siteId: SITE_ID },
+  },
+  body: {
+    type: "object",
+    required: ["allowedOrigins"],
+    properties: { allowedOrigins: originsArray },
+  },
+  response: {
+    200: siteConfigObject,
+    400: { type: "object", properties: { error: { type: "string" } } },
+    404: { type: "object", properties: { error: { type: "string" } }, description: "Site was not registered." },
     401: { type: "object", properties: { error: { type: "string" } }, description: "Missing or invalid access key." },
   },
 } as const;
