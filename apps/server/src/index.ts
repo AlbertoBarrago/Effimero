@@ -35,6 +35,7 @@ import {
   updateAllowedOrigins,
 } from "./registry.js";
 import { isOriginAllowed } from "./origins.js";
+import { checkRateLimit } from "./ratelimit.js";
 import { deriveDimensions } from "./enrichment.js";
 import { privacyLogger } from "./logging.js";
 import { normalizePath, normalizeReferrer } from "./normalization.js";
@@ -95,6 +96,17 @@ interface CollectBody {
 
 app.post<{ Body: CollectBody }>("/collect", { schema: collectSchema }, async (req, reply) => {
   const { siteId, path, referrer } = req.body;
+
+  // Shed abusive load early: over-limit clients are dropped (204) before any
+  // further work. Keyed by client IP (honors X-Forwarded-For when trustProxy).
+  const withinLimit = await checkRateLimit(
+    redis,
+    req.ip,
+    config.collectRateLimit,
+    config.collectRateWindowSeconds,
+    Date.now(),
+  );
+  if (!withinLimit) return reply.code(204).send();
 
   // Drop silently (204, not 404) for unregistered/inactive sites or a request
   // Origin outside the site's allow-list, so the endpoint leaks nothing and

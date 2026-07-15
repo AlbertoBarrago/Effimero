@@ -18,6 +18,20 @@ const LIVE_BUCKET_SECONDS = 150;
 
 const DIMENSION_KEYS = ["browser", "os", "device", "language", "country"] as const;
 
+/** Bucket for path/referrer values beyond the per-day cardinality cap. */
+export const OVERFLOW_FIELD = "__other__";
+
+/**
+ * Decides which hash field a path/referrer value is counted under, bounding
+ * distinct fields per day. Already-seen values always keep their own field;
+ * new values beyond the cap fold into a single overflow bucket, so an attacker
+ * cannot grow the hash without limit.
+ */
+export function cappedField(field: string, exists: boolean, currentLen: number, cap: number): string {
+  if (exists || cap <= 0 || currentLen < cap) return field;
+  return OVERFLOW_FIELD;
+}
+
 /**
  * Records a hit using only aggregate structures:
  * - HyperLogLog of visitor hashes → unique visitors (~0.81% std error)
@@ -28,17 +42,38 @@ const DIMENSION_KEYS = ["browser", "os", "device", "language", "country"] as con
  */
 export async function recordHit(redis: Redis, hit: Hit): Promise<void> {
   const prefix = `site:${hit.siteId}:${hit.day}`;
+
+  // Pre-read cardinality so unbounded, attacker-controlled path/referrer values
+  // fold into a single overflow bucket instead of growing the hash forever.
+  const pre = redis.pipeline();
+  pre.hlen(`${prefix}:paths`);
+  pre.hexists(`${prefix}:paths`, hit.path);
+  if (hit.referrer) {
+    pre.hlen(`${prefix}:referrers`);
+    pre.hexists(`${prefix}:referrers`, hit.referrer);
+  }
+  const pre_res = (await pre.exec()) ?? [];
+  const pathField = cappedField(
+    hit.path,
+    pre_res[1]?.[1] === 1,
+    Number(pre_res[0]?.[1] ?? 0),
+    config.maxDistinctPaths,
+  );
+  const referrerField = hit.referrer
+    ? cappedField(hit.referrer, pre_res[3]?.[1] === 1, Number(pre_res[2]?.[1] ?? 0), config.maxDistinctReferrers)
+    : null;
+
   const pipeline = redis.pipeline();
   const expiring: string[] = [];
 
   pipeline.pfadd(`${prefix}:uniques`, hit.visitorHash);
   pipeline.incr(`${prefix}:pageviews`);
-  pipeline.hincrby(`${prefix}:paths`, hit.path, 1);
+  pipeline.hincrby(`${prefix}:paths`, pathField, 1);
   pipeline.hincrby(`${prefix}:hours`, String(hit.hour), 1);
   expiring.push(`${prefix}:uniques`, `${prefix}:pageviews`, `${prefix}:paths`, `${prefix}:hours`);
 
-  if (hit.referrer) {
-    pipeline.hincrby(`${prefix}:referrers`, hit.referrer, 1);
+  if (referrerField) {
+    pipeline.hincrby(`${prefix}:referrers`, referrerField, 1);
     expiring.push(`${prefix}:referrers`);
   }
 

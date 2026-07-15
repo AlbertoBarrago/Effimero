@@ -113,6 +113,10 @@ pnpm --filter @effimero/snippet build         # builds dist/effimero.js
 | `ALLOWED_ORIGINS` | `*` | Comma-separated CORS origins (global response headers). Per-site ingest restriction is configured per site via `allowedOrigins`, not here |
 | `TRUST_PROXY` | `false` | Set `true` behind a reverse proxy so the real client IP is read from `X-Forwarded-For` |
 | `RETENTION_DAYS` | `90` | Days of aggregate stats kept in Redis |
+| `COLLECT_RATE_LIMIT` | `120` | Max `/collect` hits per client IP per window. `0` disables rate limiting |
+| `COLLECT_RATE_WINDOW` | `60` | Rate-limit window in seconds |
+| `MAX_DISTINCT_PATHS` | `2000` | Max distinct paths tracked per site/day; extras fold into `__other__` (bounds Redis memory) |
+| `MAX_DISTINCT_REFERRERS` | `2000` | Max distinct referrers tracked per site/day; extras fold into `__other__` |
 | `STATS_API_KEY` | auto-generated | **Admin** bearer key: manages the site registry (`/admin/*`) and reads every site (`/stats`, `/live`, `/sites`). Per-site read tokens (issued at registration) grant read access to a single site. Set it in `.env` to keep access stable across restarts. Empty/unset: a random key is generated and logged at boot. `disabled`: all endpoints are public |
 
 > **Important:** if Effimero runs behind nginx/Caddy/Traefik, set `TRUST_PROXY=true`, otherwise every visitor appears to come from the proxy's IP and unique counts collapse to ~1.

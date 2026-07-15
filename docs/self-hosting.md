@@ -47,6 +47,10 @@ All configuration is via environment variables on the `effimero` service:
 | `ALLOWED_ORIGINS` | `*` | Comma-separated CORS origins for response headers (global). Per-site ingest restriction is configured per site via `allowedOrigins`, not here. |
 | `TRUST_PROXY` | `false` | Trust `X-Forwarded-For` for the client IP. Required behind any reverse proxy. |
 | `RETENTION_DAYS` | `90` | How long aggregate daily stats are kept in Redis. |
+| `COLLECT_RATE_LIMIT` | `120` | Max `/collect` hits per client IP per window. `0` disables rate limiting. |
+| `COLLECT_RATE_WINDOW` | `60` | Rate-limit window length in seconds. |
+| `MAX_DISTINCT_PATHS` | `2000` | Max distinct paths tracked per site per day; extras fold into an `__other__` bucket to bound Redis memory. |
+| `MAX_DISTINCT_REFERRERS` | `2000` | Max distinct referrers tracked per site per day; extras fold into `__other__`. |
 | `STATS_API_KEY` | auto-generated | **Admin** bearer key: manages the site registry (`/admin/*`) and reads every site (`/stats`, `/live`, `/sites`). Per-site read tokens (issued at registration) read a single site. Set it in `.env` to keep access stable across restarts. Empty/unset: a random key is generated and logged once at boot. Set `disabled` to make all endpoints public. |
 
 ## Site registry & access levels

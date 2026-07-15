@@ -66,6 +66,10 @@ RETENTION_DAYS=90</code></pre>
       <tr><td><code>ALLOWED_ORIGINS</code></td><td><code>*</code></td><td>Comma-separated CORS origins for response headers (global). Per-site ingest restriction is configured per site via <code>allowedOrigins</code>, not here.</td></tr>
       <tr><td><code>TRUST_PROXY</code></td><td><code>false</code></td><td>Trust <code>X-Forwarded-For</code> for the client IP. Required behind any reverse proxy.</td></tr>
       <tr><td><code>RETENTION_DAYS</code></td><td><code>90</code></td><td>How long aggregate daily stats are kept in Redis.</td></tr>
+      <tr><td><code>COLLECT_RATE_LIMIT</code></td><td><code>120</code></td><td>Max <code>/collect</code> hits per client IP per window. <code>0</code> disables rate limiting.</td></tr>
+      <tr><td><code>COLLECT_RATE_WINDOW</code></td><td><code>60</code></td><td>Rate-limit window length in seconds.</td></tr>
+      <tr><td><code>MAX_DISTINCT_PATHS</code></td><td><code>2000</code></td><td>Max distinct paths tracked per site per day; extras fold into an <code>__other__</code> bucket to bound Redis memory.</td></tr>
+      <tr><td><code>MAX_DISTINCT_REFERRERS</code></td><td><code>2000</code></td><td>Max distinct referrers tracked per site per day; extras fold into <code>__other__</code>.</td></tr>
       <tr><td><code>STATS_API_KEY</code></td><td>auto-generated</td><td><strong>Admin</strong> bearer key: manages the registry (<code>/admin/*</code>) and reads every site. Per-site read tokens read a single site. Set it in <code>.env</code> to keep access stable across restarts. Empty/unset: a random key is generated and logged once at boot. Set <code>disabled</code> to make all endpoints public.</td></tr>
     </table>
 
@@ -115,6 +119,7 @@ RETENTION_DAYS=90</code></pre>
       <li>Hand out <strong>per-site read tokens</strong> instead of the admin key; keep the admin key to yourself.</li>
       <li>Keep <code>STATS_API_KEY</code> set to a strong value. Optionally add proxy auth for the dashboard, while leaving <code>/collect</code> and <code>/effimero.js</code> public.</li>
       <li>Do not expose Redis outside the Docker network.</li>
+      <li><code>/collect</code> is rate-limited per client IP (<code>COLLECT_RATE_LIMIT</code>) and distinct path/referrer cardinality is capped (<code>MAX_DISTINCT_*</code>) to bound memory; tune these to your traffic.</li>
       <li>Keep <code>RETENTION_DAYS</code> as low as your reporting needs allow. Less retained data is always the better privacy default.</li>
     </ul>
 

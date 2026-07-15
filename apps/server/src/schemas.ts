@@ -39,6 +39,7 @@ export const collectSchema = {
       },
       referrer: {
         type: "string",
+        maxLength: 2048,
         description: "Full referrer URL. Reduced to its hostname before storage.",
       },
     },
