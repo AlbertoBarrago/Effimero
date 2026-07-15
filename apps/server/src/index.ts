@@ -7,12 +7,22 @@ import fastifyStatic from "@fastify/static";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
 import { Redis } from "ioredis";
-import { collectSchema, statsSchema, liveSchema, healthSchema, sitesSchema } from "./schemas.js";
+import {
+  collectSchema,
+  statsSchema,
+  liveSchema,
+  healthSchema,
+  sitesSchema,
+  registerSiteSchema,
+  listSitesSchema,
+  deleteSiteSchema,
+} from "./schemas.js";
 import { resolveStatsKey, requireStatsKey } from "./auth.js";
 import { config } from "./config.js";
 import { getDailySalt } from "./salt.js";
 import { visitorHash } from "./hash.js";
 import { recordHit, getStats, getLiveVisitors, getSites } from "./stats.js";
+import { registerSite, listSites, removeSite, isRegistered } from "./registry.js";
 import { deriveDimensions } from "./enrichment.js";
 import { privacyLogger } from "./logging.js";
 import { normalizePath, normalizeReferrer } from "./normalization.js";
@@ -58,6 +68,7 @@ await app.register(swagger, {
     tags: [
       { name: "ingest", description: "Beacon endpoint used by the snippet" },
       { name: "stats", description: "Aggregate read endpoints for dashboards" },
+      { name: "admin", description: "Site registry management (registered sites only can collect)" },
       { name: "system", description: "Health and diagnostics" },
     ],
   },
@@ -72,6 +83,12 @@ interface CollectBody {
 
 app.post<{ Body: CollectBody }>("/collect", { schema: collectSchema }, async (req, reply) => {
   const { siteId, path, referrer } = req.body;
+
+  // Only registered sites are collected. Unknown siteIds are dropped silently
+  // (204, not 404) so the endpoint can't be used to enumerate registered sites.
+  if (!(await isRegistered(redis, siteId))) {
+    return reply.code(204).send();
+  }
 
   const now = new Date();
   const salt = await getDailySalt(redis, now);
@@ -116,6 +133,36 @@ app.get<{ Params: { siteId: string } }>(
 app.get("/sites", { schema: sitesSchema, preHandler: statsAuth }, async () => {
   return { sites: await getSites(redis) };
 });
+
+// Site registry management. Guarded by the same key as the read endpoints for
+// now; scoped per-tenant tokens arrive in a later task.
+app.post<{ Body: { siteId: string; allowedOrigins?: string[] } }>(
+  "/admin/sites",
+  { schema: registerSiteSchema, preHandler: statsAuth },
+  async (req, reply) => {
+    const config = await registerSite(
+      redis,
+      req.body.siteId,
+      req.body.allowedOrigins ?? [],
+      new Date().toISOString(),
+    );
+    return reply.code(201).send(config);
+  },
+);
+
+app.get("/admin/sites", { schema: listSitesSchema, preHandler: statsAuth }, async () => {
+  return { sites: await listSites(redis) };
+});
+
+app.delete<{ Params: { siteId: string } }>(
+  "/admin/sites/:siteId",
+  { schema: deleteSiteSchema, preHandler: statsAuth },
+  async (req, reply) => {
+    const removed = await removeSite(redis, req.params.siteId);
+    if (!removed) return reply.code(404).send({ error: "site not registered" });
+    return reply.code(204).send();
+  },
+);
 
 app.get("/health", { schema: healthSchema }, async () => {
   const redisOk = await redis.ping().then(() => true).catch(() => false);

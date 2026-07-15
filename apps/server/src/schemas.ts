@@ -190,3 +190,76 @@ export const sitesSchema = {
     401: { type: "object", properties: { error: { type: "string" } }, description: "Missing or invalid access key." },
   },
 } as const;
+
+const SITE_ID = { type: "string", pattern: "^[a-zA-Z0-9._-]{1,64}$" } as const;
+
+const siteConfigObject = {
+  type: "object",
+  properties: {
+    siteId: { type: "string" },
+    allowedOrigins: { type: "array", items: { type: "string" } },
+    active: { type: "boolean" },
+    createdAt: { type: "string", format: "date-time" },
+  },
+  required: ["siteId", "allowedOrigins", "active", "createdAt"],
+} as const;
+
+export const registerSiteSchema = {
+  tags: ["admin"],
+  summary: "Register a site",
+  description:
+    "Registers a site so /collect will accept hits for it. Ingest rejects any " +
+    "siteId that is not registered. allowedOrigins is stored for future per-site " +
+    "Origin validation and is not enforced yet.",
+  security: [{ bearerAuth: [] }],
+  body: {
+    type: "object",
+    required: ["siteId"],
+    properties: {
+      siteId: SITE_ID,
+      allowedOrigins: {
+        type: "array",
+        items: { type: "string", maxLength: 253 },
+        maxItems: 50,
+        default: [],
+        description: "Origins permitted to send hits. Empty means any (not yet enforced).",
+      },
+    },
+  },
+  response: {
+    201: siteConfigObject,
+    400: { type: "object", properties: { error: { type: "string" } } },
+    401: { type: "object", properties: { error: { type: "string" } }, description: "Missing or invalid access key." },
+  },
+} as const;
+
+export const listSitesSchema = {
+  tags: ["admin"],
+  summary: "List registered sites",
+  security: [{ bearerAuth: [] }],
+  response: {
+    200: {
+      type: "object",
+      properties: { sites: { type: "array", items: siteConfigObject } },
+      required: ["sites"],
+    },
+    401: { type: "object", properties: { error: { type: "string" } }, description: "Missing or invalid access key." },
+  },
+} as const;
+
+export const deleteSiteSchema = {
+  tags: ["admin"],
+  summary: "Remove a registered site",
+  description: "Removes a site from the registry. Existing aggregate stats keys are left to expire via retention.",
+  security: [{ bearerAuth: [] }],
+  params: {
+    type: "object",
+    required: ["siteId"],
+    properties: { siteId: SITE_ID },
+  },
+  response: {
+    204: { type: "null", description: "Site removed." },
+    404: { type: "object", properties: { error: { type: "string" } }, description: "Site was not registered." },
+    401: { type: "object", properties: { error: { type: "string" } }, description: "Missing or invalid access key." },
+  },
+} as const;

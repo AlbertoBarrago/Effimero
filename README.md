@@ -44,6 +44,16 @@ cp .env.sample .env
 docker compose up -d
 ```
 
+Register the site before collecting hits — `/collect` silently ignores any
+`siteId` that is not registered, so unknown sites can no longer inject stats:
+
+```sh
+curl -X POST https://your-host/admin/sites \
+     -H "Authorization: Bearer <STATS_API_KEY>" \
+     -H "Content-Type: application/json" \
+     -d '{"siteId":"my-site"}'
+```
+
 Then add the snippet to your site:
 
 ```html

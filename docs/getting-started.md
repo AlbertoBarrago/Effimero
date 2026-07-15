@@ -22,7 +22,22 @@ curl http://localhost:3000/health
 # {"status":"ok","redis":true}
 ```
 
-## 2. Add the snippet to your site
+## 2. Register the site
+
+`/collect` only accepts hits for registered sites; an unknown `siteId` is
+silently ignored so nobody can inject stats for a site you never set up. Register
+it with the access key (see step 4 for where that key comes from):
+
+```sh
+curl -X POST https://your-host/admin/sites \
+     -H "Authorization: Bearer <STATS_API_KEY>" \
+     -H "Content-Type: application/json" \
+     -d '{"siteId":"my-site"}'
+```
+
+List registered sites with `GET /admin/sites`, remove one with `DELETE /admin/sites/my-site` (same header).
+
+## 3. Add the snippet to your site
 
 Place this tag in your page `<head>` or before `</body>`:
 
@@ -39,7 +54,7 @@ Attributes:
 
 The snippet weighs about 700 bytes, tracks SPA navigations (pushState and popstate), and disables itself when the browser sends Do Not Track or Global Privacy Control.
 
-## 3. Unlock the dashboard
+## 4. Unlock the dashboard
 
 Read endpoints are protected by an access key. On first boot Effimero generates one and logs it:
 
@@ -59,7 +74,7 @@ Open the dashboard at `http://localhost:3000/` or `https://your-host/`, paste th
 STATS_API_KEY=change-me
 ```
 
-## 4. Watch the data arrive
+## 5. Watch the data arrive
 
 Enter your site id in the dashboard and you will see:
 
