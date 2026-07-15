@@ -45,13 +45,15 @@ docker compose up -d
 ```
 
 Register the site before collecting hits — `/collect` silently ignores any
-`siteId` that is not registered, so unknown sites can no longer inject stats:
+`siteId` that is not registered, so unknown sites can no longer inject stats.
+Registration returns a **per-site read token**, shown only once:
 
 ```sh
 curl -X POST https://your-host/admin/sites \
      -H "Authorization: Bearer <STATS_API_KEY>" \
      -H "Content-Type: application/json" \
      -d '{"siteId":"my-site"}'
+# → { "siteId": "my-site", ..., "readToken": "…store-this-now…" }
 ```
 
 Then add the snippet to your site:
@@ -62,13 +64,24 @@ Then add the snippet to your site:
         data-endpoint="https://your-host/collect" defer></script>
 ```
 
-View stats through the dashboard at `https://your-host/`. The dashboard asks for the `STATS_API_KEY`; set it in `.env`, or retrieve the generated key from the server logs if you left it empty:
+### Reading stats: two credential levels
+
+- The **`STATS_API_KEY`** (admin) reads every site and manages the registry.
+- A **per-site read token** reads only its own site — hand this to a client so they can see their data and nothing else. Rotate it with `POST /admin/sites/my-site/token`.
+
+View stats through the dashboard at `https://your-host/`. It accepts either credential; set `STATS_API_KEY` in `.env`, or retrieve the generated key from the server logs if you left it empty:
 
 ```sh
 docker compose logs effimero | grep generated
 ```
 
-You can also query `GET /stats/my-site?range=30` with `Authorization: Bearer <STATS_API_KEY>`.
+You can also query the API directly with either credential:
+
+```sh
+curl https://your-host/stats/my-site?range=30 -H "Authorization: Bearer <token-or-admin-key>"
+```
+
+A site token is rejected (`403`) for any site other than its own.
 
 ## Development
 
@@ -89,7 +102,7 @@ pnpm --filter @effimero/snippet build         # builds dist/effimero.js
 | `ALLOWED_ORIGINS` | `*` | Comma-separated CORS origins |
 | `TRUST_PROXY` | `false` | Set `true` behind a reverse proxy so the real client IP is read from `X-Forwarded-For` |
 | `RETENTION_DAYS` | `90` | Days of aggregate stats kept in Redis |
-| `STATS_API_KEY` | auto-generated | Bearer key protecting `/stats`, `/live`, and `/sites`. Set it in `.env` to keep dashboard access stable across restarts. Empty/unset: a random key is generated and logged at boot. `disabled`: read endpoints are public |
+| `STATS_API_KEY` | auto-generated | **Admin** bearer key: manages the site registry (`/admin/*`) and reads every site (`/stats`, `/live`, `/sites`). Per-site read tokens (issued at registration) grant read access to a single site. Set it in `.env` to keep access stable across restarts. Empty/unset: a random key is generated and logged at boot. `disabled`: all endpoints are public |
 
 > **Important:** if Effimero runs behind nginx/Caddy/Traefik, set `TRUST_PROXY=true`, otherwise every visitor appears to come from the proxy's IP and unique counts collapse to ~1.
 

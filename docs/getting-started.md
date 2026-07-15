@@ -35,7 +35,13 @@ curl -X POST https://your-host/admin/sites \
      -d '{"siteId":"my-site"}'
 ```
 
-List registered sites with `GET /admin/sites`, remove one with `DELETE /admin/sites/my-site` (same header).
+The response includes a **per-site read token**, shown only once — store it now:
+
+```json
+{ "siteId": "my-site", "allowedOrigins": [], "active": true, "createdAt": "…", "readToken": "…" }
+```
+
+List registered sites with `GET /admin/sites`, remove one with `DELETE /admin/sites/my-site`, and rotate a lost token with `POST /admin/sites/my-site/token` (same header).
 
 ## 3. Add the snippet to your site
 
@@ -56,7 +62,12 @@ The snippet weighs about 700 bytes, tracks SPA navigations (pushState and popsta
 
 ## 4. Unlock the dashboard
 
-Read endpoints are protected by an access key. On first boot Effimero generates one and logs it:
+Read endpoints accept two credentials:
+
+- the **`STATS_API_KEY`** (admin) — reads every site and manages the registry;
+- a **per-site read token** (from step 2) — reads only its own site. A site token is rejected with `403` for any other site, so it is safe to hand to a client.
+
+On first boot Effimero generates the admin key and logs it:
 
 ```sh
 docker compose logs effimero | grep generated
@@ -68,7 +79,7 @@ The log line looks like this:
 STATS_API_KEY not set, generated one for this run: <key>
 ```
 
-Open the dashboard at `http://localhost:3000/` or `https://your-host/`, paste the key when prompted, and you are in. The generated key changes whenever the server restarts. Set `STATS_API_KEY` in `.env` to keep a stable key:
+Open the dashboard at `http://localhost:3000/` or `https://your-host/`, paste either credential when prompted, and you are in. The generated admin key changes whenever the server restarts. Set `STATS_API_KEY` in `.env` to keep a stable key:
 
 ```dotenv
 STATS_API_KEY=change-me

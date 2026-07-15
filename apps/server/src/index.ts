@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { randomBytes } from "node:crypto";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
@@ -16,13 +17,14 @@ import {
   registerSiteSchema,
   listSitesSchema,
   deleteSiteSchema,
+  rotateTokenSchema,
 } from "./schemas.js";
-import { resolveStatsKey, requireStatsKey } from "./auth.js";
+import { resolveStatsKey, requireStatsKey, authorizeRead, hashToken } from "./auth.js";
 import { config } from "./config.js";
 import { getDailySalt } from "./salt.js";
 import { visitorHash } from "./hash.js";
 import { recordHit, getStats, getLiveVisitors, getSites } from "./stats.js";
-import { registerSite, listSites, removeSite, isRegistered } from "./registry.js";
+import { registerSite, listSites, removeSite, isRegistered, setReadToken } from "./registry.js";
 import { deriveDimensions } from "./enrichment.js";
 import { privacyLogger } from "./logging.js";
 import { normalizePath, normalizeReferrer } from "./normalization.js";
@@ -111,11 +113,12 @@ app.post<{ Body: CollectBody }>("/collect", { schema: collectSchema }, async (re
 });
 
 const statsKey = resolveStatsKey(app.log);
-const statsAuth = requireStatsKey(statsKey);
+const adminAuth = requireStatsKey(statsKey);
+const readAuth = authorizeRead(redis, statsKey);
 
 app.get<{ Params: { siteId: string }; Querystring: { range?: number } }>(
   "/stats/:siteId",
-  { schema: statsSchema, preHandler: statsAuth },
+  { schema: statsSchema, preHandler: readAuth },
   async (req) => {
     const range = Math.min(Math.max(Number(req.query.range ?? 30), 1), config.retentionDays);
     return getStats(redis, req.params.siteId, range);
@@ -124,21 +127,25 @@ app.get<{ Params: { siteId: string }; Querystring: { range?: number } }>(
 
 app.get<{ Params: { siteId: string } }>(
   "/live/:siteId",
-  { schema: liveSchema, preHandler: statsAuth },
+  { schema: liveSchema, preHandler: readAuth },
   async (req) => {
     return { live: await getLiveVisitors(redis, req.params.siteId) };
   },
 );
 
-app.get("/sites", { schema: sitesSchema, preHandler: statsAuth }, async () => {
-  return { sites: await getSites(redis) };
+app.get("/sites", { schema: sitesSchema, preHandler: readAuth }, async (req) => {
+  const sites = await getSites(redis);
+  // A site-scoped token only sees its own site; the admin key sees all.
+  const scope = req.siteScope;
+  const visible = scope === "all" || scope === undefined ? sites : sites.filter((s) => scope.includes(s));
+  return { sites: visible };
 });
 
-// Site registry management. Guarded by the same key as the read endpoints for
-// now; scoped per-tenant tokens arrive in a later task.
+// Site registry management. Requires the admin key (STATS_API_KEY); a site's
+// own read token cannot manage the registry.
 app.post<{ Body: { siteId: string; allowedOrigins?: string[] } }>(
   "/admin/sites",
-  { schema: registerSiteSchema, preHandler: statsAuth },
+  { schema: registerSiteSchema, preHandler: adminAuth },
   async (req, reply) => {
     const config = await registerSite(
       redis,
@@ -146,21 +153,38 @@ app.post<{ Body: { siteId: string; allowedOrigins?: string[] } }>(
       req.body.allowedOrigins ?? [],
       new Date().toISOString(),
     );
-    return reply.code(201).send(config);
+    const readToken = randomBytes(24).toString("base64url");
+    await setReadToken(redis, config.siteId, hashToken(readToken));
+    // readToken is returned once here and never stored in plaintext.
+    return reply.code(201).send({ ...config, readToken });
   },
 );
 
-app.get("/admin/sites", { schema: listSitesSchema, preHandler: statsAuth }, async () => {
+app.get("/admin/sites", { schema: listSitesSchema, preHandler: adminAuth }, async () => {
   return { sites: await listSites(redis) };
 });
 
 app.delete<{ Params: { siteId: string } }>(
   "/admin/sites/:siteId",
-  { schema: deleteSiteSchema, preHandler: statsAuth },
+  { schema: deleteSiteSchema, preHandler: adminAuth },
   async (req, reply) => {
     const removed = await removeSite(redis, req.params.siteId);
     if (!removed) return reply.code(404).send({ error: "site not registered" });
     return reply.code(204).send();
+  },
+);
+
+// Rotate a site's read token: issues a new one and invalidates the previous.
+app.post<{ Params: { siteId: string } }>(
+  "/admin/sites/:siteId/token",
+  { schema: rotateTokenSchema, preHandler: adminAuth },
+  async (req, reply) => {
+    if (!(await isRegistered(redis, req.params.siteId))) {
+      return reply.code(404).send({ error: "site not registered" });
+    }
+    const readToken = randomBytes(24).toString("base64url");
+    await setReadToken(redis, req.params.siteId, hashToken(readToken));
+    return reply.code(200).send({ siteId: req.params.siteId, readToken });
   },
 );
 

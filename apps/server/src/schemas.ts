@@ -134,6 +134,7 @@ export const statsSchema = {
     },
     400: { type: "object", properties: { error: { type: "string" } } },
     401: { type: "object", properties: { error: { type: "string" } }, description: "Missing or invalid access key." },
+    403: { type: "object", properties: { error: { type: "string" } }, description: "Token not authorized for this site." },
   },
 } as const;
 
@@ -157,6 +158,7 @@ export const liveSchema = {
     },
     400: { type: "object", properties: { error: { type: "string" } } },
     401: { type: "object", properties: { error: { type: "string" } }, description: "Missing or invalid access key." },
+    403: { type: "object", properties: { error: { type: "string" } }, description: "Token not authorized for this site." },
   },
 } as const;
 
@@ -227,8 +229,42 @@ export const registerSiteSchema = {
     },
   },
   response: {
-    201: siteConfigObject,
+    201: {
+      type: "object",
+      properties: {
+        ...siteConfigObject.properties,
+        readToken: {
+          type: "string",
+          description: "Per-site read token. Shown ONCE at creation; store it now. Only its hash is kept.",
+        },
+      },
+      required: [...siteConfigObject.required, "readToken"],
+    },
     400: { type: "object", properties: { error: { type: "string" } } },
+    401: { type: "object", properties: { error: { type: "string" } }, description: "Missing or invalid access key." },
+  },
+} as const;
+
+export const rotateTokenSchema = {
+  tags: ["admin"],
+  summary: "Rotate a site's read token",
+  description: "Issues a new read token for the site and invalidates the previous one. Shown once.",
+  security: [{ bearerAuth: [] }],
+  params: {
+    type: "object",
+    required: ["siteId"],
+    properties: { siteId: SITE_ID },
+  },
+  response: {
+    200: {
+      type: "object",
+      properties: {
+        siteId: { type: "string" },
+        readToken: { type: "string", description: "New read token. Shown once." },
+      },
+      required: ["siteId", "readToken"],
+    },
+    404: { type: "object", properties: { error: { type: "string" } }, description: "Site was not registered." },
     401: { type: "object", properties: { error: { type: "string" } }, description: "Missing or invalid access key." },
   },
 } as const;

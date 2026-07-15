@@ -1,15 +1,24 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Redis } from "ioredis";
-import { registerSite, getSiteConfig, isRegistered, listSites, removeSite } from "../src/registry.js";
+import {
+  registerSite,
+  getSiteConfig,
+  isRegistered,
+  listSites,
+  removeSite,
+  setReadToken,
+  resolveTokenSite,
+} from "../src/registry.js";
 
 /**
- * Minimal in-memory Redis covering the hash/set commands the registry uses,
- * including the pipeline() form. Mirrors the fake in salt.test.ts.
+ * Minimal in-memory Redis covering the hash/set/string commands the registry
+ * uses, including the pipeline() form. Mirrors the fake in salt.test.ts.
  */
 class MemoryRedis {
   readonly hashes = new Map<string, Map<string, string>>();
   readonly sets = new Map<string, Set<string>>();
+  readonly strings = new Map<string, string>();
 
   private hashOf(key: string): Map<string, string> {
     let h = this.hashes.get(key);
@@ -31,6 +40,15 @@ class MemoryRedis {
     return Object.fromEntries(this.hashes.get(key) ?? new Map());
   }
 
+  async set(key: string, value: string) {
+    this.strings.set(key, value);
+    return "OK";
+  }
+
+  async get(key: string) {
+    return this.strings.get(key) ?? null;
+  }
+
   async sadd(key: string, member: string) {
     let s = this.sets.get(key);
     if (!s) this.sets.set(key, (s = new Set()));
@@ -49,13 +67,15 @@ class MemoryRedis {
   }
 
   async del(key: string) {
-    return this.hashes.delete(key) ? 1 : 0;
+    const existed = this.hashes.delete(key) || this.strings.delete(key);
+    return existed ? 1 : 0;
   }
 
   pipeline() {
     const ops: Array<() => Promise<unknown>> = [];
     const chain = {
       hset: (k: string, o: Record<string, string>) => (ops.push(() => this.hset(k, o)), chain),
+      set: (k: string, v: string) => (ops.push(() => this.set(k, v)), chain),
       sadd: (k: string, m: string) => (ops.push(() => this.sadd(k, m)), chain),
       srem: (k: string, m: string) => (ops.push(() => this.srem(k, m)), chain),
       del: (k: string) => (ops.push(() => this.del(k)), chain),
@@ -130,4 +150,40 @@ test("removeSite deletes the config and reports existence", async () => {
   assert.equal(await isRegistered(redis, "site-a"), false);
   assert.equal(await getSiteConfig(redis, "site-a"), null);
   assert.equal(await removeSite(redis, "site-a"), false);
+});
+
+test("setReadToken maps a token hash to its site", async () => {
+  const redis = fresh();
+  await registerSite(redis, "site-a", [], CREATED_AT);
+
+  await setReadToken(redis, "site-a", "hash-a");
+
+  assert.equal(await resolveTokenSite(redis, "hash-a"), "site-a");
+  assert.equal((await getSiteConfig(redis, "site-a"))?.readTokenHash, "hash-a");
+});
+
+test("setReadToken invalidates the previous token on rotation", async () => {
+  const redis = fresh();
+  await registerSite(redis, "site-a", [], CREATED_AT);
+
+  await setReadToken(redis, "site-a", "hash-old");
+  await setReadToken(redis, "site-a", "hash-new");
+
+  assert.equal(await resolveTokenSite(redis, "hash-old"), null);
+  assert.equal(await resolveTokenSite(redis, "hash-new"), "site-a");
+});
+
+test("resolveTokenSite returns null for an unknown token", async () => {
+  const redis = fresh();
+  assert.equal(await resolveTokenSite(redis, "nope"), null);
+});
+
+test("removeSite invalidates the site's read token", async () => {
+  const redis = fresh();
+  await registerSite(redis, "site-a", [], CREATED_AT);
+  await setReadToken(redis, "site-a", "hash-a");
+
+  await removeSite(redis, "site-a");
+
+  assert.equal(await resolveTokenSite(redis, "hash-a"), null);
 });

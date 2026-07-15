@@ -2,7 +2,14 @@
 
 The canonical, always-current reference is the interactive Swagger UI served by the API itself at **`/docs/api`** (OpenAPI JSON at `/docs/api/json`). This page is a readable summary.
 
-All endpoints are JSON over HTTP. The read endpoints (`/stats`, `/live`) require `Authorization: Bearer <STATS_API_KEY>`; the key is auto-generated and logged at boot when not configured. `/collect` is public by design: browsers of tracked sites post to it.
+All endpoints are JSON over HTTP.
+
+**Authentication.** Two credential levels, both passed as `Authorization: Bearer <value>`:
+
+- The **admin key** (`STATS_API_KEY`, auto-generated and logged at boot when not configured) — required for the `/admin/*` registry routes and grants read access to every site.
+- A **per-site read token** — issued when a site is registered; grants read access to that one site only. Presenting it for any other site returns `403`.
+
+Read routes (`/stats`, `/live`, `/sites`) accept either credential. `/collect` is public but only records hits for **registered** sites (see `/admin/sites`); hits for unknown sites are silently dropped.
 
 ## POST /collect
 
@@ -24,7 +31,7 @@ Request body:
 | `path` | yes | Max 512 chars. Query string and fragment are stripped server-side. |
 | `referrer` | no | Full URL; reduced to hostname before storage. |
 
-Responses: `204` on success, `400` on schema violation.
+Responses: `204` on success (also returned, without recording, when `siteId` is not registered), `400` on schema violation.
 
 The visitor hash is computed server-side from the connection IP and `User-Agent` header, so the payload carries no identity. `Accept-Language` feeds the language counter; GeoIP on the IP feeds the country counter. Both are aggregate-only.
 
@@ -61,13 +68,28 @@ Unique visitors in roughly the last 5 minutes (two 150-second HLL buckets).
 { "live": 7 }
 ```
 
+Responses: `200`, `401` without a valid credential, `403` when a site token is used for a different site.
+
 ## GET /sites
 
-Known site ids seen within the retention window, most recently active first. Requires the bearer key.
+Known site ids seen within the retention window, most recently active first. With the admin key this lists every site; with a per-site token it lists only that site.
 
 ```json
 { "sites": ["my-site", "blog"] }
 ```
+
+## Admin: site registry
+
+All `/admin/*` routes require the **admin key** — a per-site read token cannot manage the registry.
+
+| Method & path | Purpose |
+|---|---|
+| `POST /admin/sites` | Register a site. Body: `{ "siteId": "my-site", "allowedOrigins": [] }`. Returns the config plus a one-time `readToken`. |
+| `GET /admin/sites` | List registered site configs (no token material is returned). |
+| `DELETE /admin/sites/{siteId}` | Remove a site and invalidate its read token. `204`, or `404` if unknown. |
+| `POST /admin/sites/{siteId}/token` | Rotate the read token; the previous one stops working. Returns the new `readToken`. |
+
+`allowedOrigins` is stored but not yet enforced (per-site Origin validation is planned). The `readToken` is shown only once; only its SHA-256 is stored.
 
 ## GET /health
 
