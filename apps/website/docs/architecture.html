@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Architecture · Effimero</title>
+<meta name="description" content="Effimero architecture: monorepo layout, data flow, module responsibilities, and key design decisions." />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<a class="skip-link" href="#content">Skip to content</a>
+
+<nav class="topnav">
+  <span class="brand"><a href="../index.html">Effimero</a></span>
+  <div class="navlinks">
+    <a href="../index.html">Home</a>
+    <a href="api.html">API</a>
+    <a href="https://github.com/albertobarrago/effimero">GitHub</a>
+  </div>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <span class="side-title">Documentation</span>
+    <nav>
+      <a href="index.html">Overview</a>
+      <a href="getting-started.html">Getting started</a>
+      <a href="self-hosting.html">Self-hosting</a>
+      <a href="api.html">API reference</a>
+      <a href="privacy.html">Privacy model</a>
+      <a href="architecture.html" class="active">Architecture</a>
+    </nav>
+  </aside>
+
+  <main class="content" id="content">
+    <h1>Architecture</h1>
+    <p class="lead">A small, boring, single-responsibility codebase. pnpm workspaces; TypeScript everywhere except the static HTML packages.</p>
+
+    <h2 id="layout">Monorepo layout</h2>
+    <pre><code>effimero/
+  apps/
+    server/       Fastify API: ingest, stats, registry, swagger, static serving
+    dashboard/    React cockpit dashboard (Vite)
+    website/      static presentation site
+  packages/
+    snippet/      browser tracking script (~700 B, esbuild IIFE)
+  examples/
+    test-site/    plain HTML pages for local hit generation
+  docs/           source documentation
+  Dockerfile      multi-stage build: server + snippet + dashboard in one image
+  docker-compose.yml</code></pre>
+
+    <h2 id="data-flow">Data flow</h2>
+    <pre><code>browser ──POST /collect──▶ Fastify
+                             │  getSiteConfig(redis)        registry.ts
+                             │  isOriginAllowed(origin)     origins.ts
+                             │  getDailySalt(redis)         salt.ts
+                             │  visitorHash(ip, ua, salt)   hash.ts
+                             │  deriveDimensions(ip, ua)    enrichment.ts
+                             ▼
+                           recordHit(redis)                 stats.ts
+                             │  PFADD uniques + live, INCR pageviews,
+                             │  HINCRBY paths/referrers/dimensions/hours
+                             ▼
+dashboard ◀─GET /stats,/live─ getStats / getLiveVisitors  (scoped by auth.ts)</code></pre>
+    <p>A hit is recorded only when the <code>siteId</code> is registered and the request <code>Origin</code> passes the site's allow-list. Reads are gated by <code>auth.ts</code>, which resolves the bearer credential to a scope (all sites for the admin key, one site for a read token).</p>
+
+    <h2 id="modules">Module responsibilities (server)</h2>
+    <table>
+      <tr><th>Module</th><th>Responsibility</th><th>Depends on</th></tr>
+      <tr><td><code>config.ts</code></td><td>environment parsing, one place</td><td>nothing</td></tr>
+      <tr><td><code>salt.ts</code></td><td>daily salt lifecycle, atomic creation</td><td>Redis</td></tr>
+      <tr><td><code>hash.ts</code></td><td>pure hash function</td><td>node:crypto</td></tr>
+      <tr><td><code>enrichment.ts</code></td><td>UA/geo/language to coarse buckets</td><td>ua-parser-js, geoip-lite</td></tr>
+      <tr><td><code>registry.ts</code></td><td>site registry: which sites may collect, per-site config and read tokens</td><td>Redis</td></tr>
+      <tr><td><code>origins.ts</code></td><td>per-site Origin allow-list matching</td><td>nothing</td></tr>
+      <tr><td><code>auth.ts</code></td><td>access control: admin key vs scoped per-site read tokens</td><td>node:crypto, Redis</td></tr>
+      <tr><td><code>stats.ts</code></td><td>write and read aggregate structures</td><td>Redis</td></tr>
+      <tr><td><code>schemas.ts</code></td><td>request/response JSON Schemas, feeds validation and OpenAPI</td><td>nothing</td></tr>
+      <tr><td><code>index.ts</code></td><td>HTTP wiring only: routes call one function each</td><td>all of the above</td></tr>
+    </table>
+    <p>Each module has a single reason to change, which keeps the SOLID story honest: <code>index.ts</code> knows HTTP, <code>stats.ts</code> knows Redis, and neither knows the other's internals.</p>
+
+    <h2 id="decisions">Key design decisions</h2>
+    <p><strong>Registry-gated, origin-checked ingest.</strong> <code>/collect</code> records a hit only when the <code>siteId</code> is registered and the request <code>Origin</code> is within the site's allow-list (empty = any). Both checks are a single <code>HGETALL</code> and fail closed with a silent <code>204</code>, so the endpoint neither injects nor leaks anything for unknown sites.</p>
+    <p><strong>Two-level read access.</strong> The global <code>STATS_API_KEY</code> is the admin credential (registry management + read all). Each site also gets a read token whose SHA-256 is stored behind a reverse index; presenting it grants read access to that one site only. Scope resolution in <code>auth.ts</code> is a pure function, unit-tested without HTTP.</p>
+    <p><strong>Server-side hashing.</strong> The browser does not know its public IP, so the hash cannot be computed client-side. The server computes it in memory per request and discards the inputs. The payload carries no identity at all.</p>
+    <p><strong>Redis HyperLogLog for uniques.</strong> Counting uniques exactly would require storing every hash (a de-anonymization surface and unbounded memory). HLL gives ~0.81% error in at most 12&nbsp;KB per key and makes the stored data non-reversible even in theory.</p>
+    <p><strong>Salt via <code>SET NX</code> + TTL instead of a cron job.</strong> Any request can create the day's salt; Redis atomicity guarantees a single winner under concurrency. No scheduler, no clock-skew bugs, and replicas agree by construction.</p>
+    <p><strong>Daily keys with per-key TTL instead of a cleanup job.</strong> Retention falls out of Redis expiry; there is nothing to garbage-collect.</p>
+    <p><strong>Fastify with JSON Schema on every route.</strong> Validation happens before handlers run, and the same schemas generate the OpenAPI document at <code>/docs/api</code>. One source of truth.</p>
+    <p><strong>One Docker image.</strong> The multi-stage build compiles snippet, dashboard, and server, and the server serves the static assets. Self-hosters deploy exactly two containers.</p>
+
+    <h2 id="performance">Performance characteristics</h2>
+    <ul>
+      <li><code>/collect</code> does one config lookup, one salt lookup, and one pipelined Redis transaction (about 12 commands, single round trip).</li>
+      <li><code>/stats</code> reads the whole range in one pipeline; a 90-day query is roughly 900 Redis commands in one round trip, still single-digit milliseconds on a local Redis.</li>
+      <li>The server is stateless: horizontal scaling is adding replicas behind the proxy.</li>
+    </ul>
+
+    <nav class="pager">
+      <a href="privacy.html"><span class="dir">Previous</span>Privacy model</a>
+      <span class="empty"></span>
+    </nav>
+  </main>
+</div>
+
+<footer class="site">
+  Effimero &middot; Free &amp; open source, AGPL-3.0 &middot; <a href="https://github.com/albertobarrago/effimero">GitHub</a>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,213 @@
+/* Effimero documentation — shared styles for the multi-page docs site. */
+
+:root {
+  color-scheme: light dark;
+  --accent: #3987e5;
+  --accent-2: #199e70;
+  --bg: #fcfcfb;
+  --surface: #f4f4f2;
+  --surface-2: #eeeeec;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --border: rgba(11, 11, 11, 0.12);
+  --sidebar-w: 15rem;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface-2: #1c232c;
+    --ink: #e6edf3;
+    --ink-2: #9da7b3;
+    --border: rgba(255, 255, 255, 0.12);
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--accent); }
+
+.skip-link {
+  position: absolute;
+  left: -999px;
+  top: 0;
+  background: var(--accent);
+  color: #fff;
+  padding: 0.5rem 1rem;
+  border-radius: 0 0 8px 0;
+  z-index: 10;
+}
+.skip-link:focus { left: 0; }
+
+/* ---- top navigation ---- */
+.topnav {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.85rem 1.5rem;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: saturate(1.4) blur(8px);
+  border-bottom: 1px solid var(--border);
+}
+.topnav .brand { font-weight: 700; letter-spacing: 0.02em; }
+.topnav .brand a { color: var(--ink); text-decoration: none; }
+.topnav .navlinks { display: flex; gap: 1.4rem; }
+.topnav .navlinks a { color: var(--ink-2); text-decoration: none; font-size: 0.9rem; }
+.topnav .navlinks a:hover { color: var(--accent); }
+
+/* ---- layout: sidebar + content ---- */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  max-width: 1160px;
+  margin: 0 auto;
+}
+
+.sidebar {
+  border-bottom: 1px solid var(--border);
+  padding: 0.5rem 1rem;
+}
+.sidebar .side-title {
+  display: none;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-2);
+  padding: 0 0.75rem;
+  margin-bottom: 0.5rem;
+}
+.sidebar nav {
+  display: flex;
+  flex-direction: row;
+  gap: 0.25rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.sidebar a {
+  display: block;
+  white-space: nowrap;
+  padding: 0.4rem 0.75rem;
+  border-radius: 7px;
+  color: var(--ink-2);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+.sidebar a:hover { background: var(--surface); color: var(--ink); }
+.sidebar a.active { background: var(--surface-2); color: var(--ink); font-weight: 600; }
+
+.content {
+  min-width: 0;
+  padding: 2rem 1.25rem 4rem;
+}
+
+/* ---- typography ---- */
+.content h1 { font-size: clamp(1.8rem, 4vw, 2.2rem); margin: 0.5rem 0 0.75rem; letter-spacing: -0.02em; }
+.content .lead { font-size: 1.1rem; color: var(--ink-2); margin: 0 0 2rem; text-wrap: pretty; }
+.content h2 { font-size: 1.4rem; margin: 3rem 0 1rem; padding-top: 1.75rem; border-top: 1px solid var(--border); scroll-margin-top: 4rem; }
+.content h3 { font-size: 1.08rem; margin: 1.9rem 0 0.5rem; scroll-margin-top: 4rem; }
+.content p, .content li { color: var(--ink-2); }
+.content strong { color: var(--ink); }
+
+pre {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.1rem 1.35rem;
+  margin: 1rem 0 1.5rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+code { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+p code, li code, td code { color: var(--ink); font-size: 0.9em; background: var(--surface); padding: 0.1rem 0.35rem; border-radius: 5px; }
+pre code { background: none; padding: 0; }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin: 1rem 0 1.5rem; display: block; overflow-x: auto; }
+th, td { text-align: left; padding: 0.55rem 0.8rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { color: var(--ink); white-space: nowrap; }
+td { color: var(--ink-2); }
+td:last-child { min-width: 220px; }
+
+.callout {
+  border-left: 3px solid var(--accent);
+  background: var(--surface);
+  border-radius: 0 10px 10px 0;
+  padding: 0.85rem 1.25rem;
+  margin: 1.25rem 0 1.5rem;
+}
+.callout.warn { border-left-color: #d0902b; }
+.callout p { margin: 0; }
+
+ul.clean { list-style: none; padding-left: 0; }
+ul.clean li { margin-bottom: 0.5rem; }
+
+/* ---- cards (overview) ---- */
+.cards { display: grid; grid-template-columns: 1fr; gap: 1rem; margin: 1.5rem 0; }
+@media (min-width: 560px) { .cards { grid-template-columns: repeat(2, 1fr); } }
+.card {
+  display: block;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem 1.4rem;
+  text-decoration: none;
+  transition: border-color 120ms ease, transform 120ms ease;
+}
+.card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.card h3 { margin: 0 0 0.35rem; font-size: 1.05rem; color: var(--ink); }
+.card p { margin: 0; color: var(--ink-2); font-size: 0.92rem; }
+
+/* ---- prev/next pager ---- */
+.pager { display: flex; justify-content: space-between; gap: 1rem; margin-top: 3.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+.pager a { flex: 1; text-decoration: none; border: 1px solid var(--border); border-radius: 10px; padding: 0.8rem 1rem; color: var(--ink); }
+.pager a:hover { border-color: var(--accent); }
+.pager a.next { text-align: right; }
+.pager .dir { display: block; font-size: 0.75rem; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.06em; }
+.pager .empty { flex: 1; }
+
+/* ---- diagram ---- */
+.diagram { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; overflow-x: auto; margin: 1.25rem 0 1.5rem; }
+.diagram svg { display: block; margin: 0 auto; min-width: 640px; }
+.diagram text { fill: var(--ink); font-size: 13px; font-family: ui-monospace, "SF Mono", monospace; }
+.diagram text.dim { fill: var(--ink-2); font-size: 11px; font-family: system-ui, sans-serif; }
+.diagram rect { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+.diagram path.arrow { stroke: var(--ink-2); stroke-width: 1.5; fill: none; }
+
+footer.site {
+  border-top: 1px solid var(--border);
+  padding: 2rem 1.5rem;
+  text-align: center;
+  color: var(--ink-2);
+  font-size: 0.85rem;
+}
+footer.site a { color: var(--accent); }
+
+/* ---- desktop: real sidebar ---- */
+@media (min-width: 900px) {
+  .layout { grid-template-columns: var(--sidebar-w) 1fr; gap: 2rem; padding: 0 1.5rem; }
+  .sidebar {
+    border-bottom: none;
+    padding: 2rem 0.5rem;
+    position: sticky;
+    top: 3.6rem;
+    align-self: start;
+    height: calc(100vh - 3.6rem);
+  }
+  .sidebar .side-title { display: block; }
+  .sidebar nav { flex-direction: column; overflow-x: visible; gap: 0.15rem; }
+  .content { padding: 2.5rem 0 5rem; max-width: 760px; }
+}

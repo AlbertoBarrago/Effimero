@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>API reference · Effimero</title>
+<meta name="description" content="Effimero HTTP API: ingest, scoped read endpoints, and the admin site-registry routes." />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<a class="skip-link" href="#content">Skip to content</a>
+
+<nav class="topnav">
+  <span class="brand"><a href="../index.html">Effimero</a></span>
+  <div class="navlinks">
+    <a href="../index.html">Home</a>
+    <a href="api.html">API</a>
+    <a href="https://github.com/albertobarrago/effimero">GitHub</a>
+  </div>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <span class="side-title">Documentation</span>
+    <nav>
+      <a href="index.html">Overview</a>
+      <a href="getting-started.html">Getting started</a>
+      <a href="self-hosting.html">Self-hosting</a>
+      <a href="api.html" class="active">API reference</a>
+      <a href="privacy.html">Privacy model</a>
+      <a href="architecture.html">Architecture</a>
+    </nav>
+  </aside>
+
+  <main class="content" id="content">
+    <h1>API reference</h1>
+    <p class="lead">The canonical, always-current reference is the interactive Swagger UI at <code>/docs/api</code> (OpenAPI JSON at <code>/docs/api/json</code>). This page is a readable summary.</p>
+
+    <h2 id="auth">Authentication</h2>
+    <p>All endpoints are JSON over HTTP. Two credential levels, both passed as <code>Authorization: Bearer &lt;value&gt;</code>:</p>
+    <ul>
+      <li>the <strong>admin key</strong> (<code>STATS_API_KEY</code>, auto-generated and logged at boot when not configured) — required for the <code>/admin/*</code> routes and grants read access to every site;</li>
+      <li>a <strong>per-site read token</strong> — issued when a site is registered; grants read access to that one site only. Presenting it for any other site returns <code>403</code>.</li>
+    </ul>
+    <p>Read routes (<code>/stats</code>, <code>/live</code>, <code>/sites</code>) accept either credential. <code>/collect</code> is public but only records hits for <strong>registered</strong> sites; hits for unknown sites — or, when a site restricts its origins, from a non-matching <code>Origin</code> — are silently dropped.</p>
+
+    <h2 id="collect">POST /collect</h2>
+    <p>Records one pageview. Called by the snippet; you can also call it from any backend.</p>
+    <pre><code>{ "siteId": "my-site", "path": "/pricing", "referrer": "https://news.ycombinator.com/" }</code></pre>
+    <table>
+      <tr><th>Field</th><th>Required</th><th>Notes</th></tr>
+      <tr><td><code>siteId</code></td><td>yes</td><td><code>^[a-zA-Z0-9._-]{1,64}$</code>, and must be registered.</td></tr>
+      <tr><td><code>path</code></td><td>yes</td><td>Max 512 chars. Query string and fragment are stripped server-side.</td></tr>
+      <tr><td><code>referrer</code></td><td>no</td><td>Full URL; reduced to hostname before storage.</td></tr>
+    </table>
+    <p>Responses: <code>204</code> on success (also returned, without recording, for an unregistered site or a non-matching <code>Origin</code>), <code>400</code> on schema violation. The payload carries no identity: the visitor hash is computed server-side from connection IP and User-Agent, in memory only.</p>
+
+    <h2 id="stats">GET /stats/{siteId}?range={days}</h2>
+    <p>Aggregate statistics for the last <code>range</code> days (default 30, capped at <code>RETENTION_DAYS</code>).</p>
+    <pre><code>{
+  "days": [{ "day": "2026-07-13", "uniques": 132, "pageviews": 410 }],
+  "totals": { "uniques": 132, "pageviews": 410, "pagesPerVisitor": 3.11 },
+  "topPaths": [{ "path": "/", "count": 210 }],
+  "topReferrers": [{ "referrer": "google.com", "count": 88 }],
+  "hours": [0, 0, 3, 12],
+  "browsers": [{ "label": "Chrome", "count": 90 }],
+  "os": [{ "label": "macOS", "count": 60 }],
+  "devices": [{ "label": "desktop", "count": 100 }],
+  "languages": [{ "label": "it", "count": 70 }],
+  "countries": [{ "label": "IT", "count": 75 }]
+}</code></pre>
+    <p>Responses: <code>200</code>, <code>401</code> without a valid credential, <code>403</code> when a site token is used for a different site.</p>
+    <div class="callout"><p><strong>Accuracy:</strong> daily <code>uniques</code> are HyperLogLog counts (~0.81% error). <code>totals.uniques</code> merges daily-salted HLLs, so a returning visitor counts once per day: treat it as an upper bound, and <code>pagesPerVisitor</code> inherits that caveat. <code>hours</code> is a 24-element array of pageviews per UTC hour, summed over the range.</p></div>
+
+    <h2 id="live">GET /live/{siteId}</h2>
+    <p>Unique visitors in roughly the last 5 minutes (two 150-second HLL buckets). Same <code>401</code>/<code>403</code> rules as <code>/stats</code>.</p>
+    <pre><code>{ "live": 7 }</code></pre>
+
+    <h2 id="sites">GET /sites</h2>
+    <p>Known site ids seen within the retention window, most recently active first. With the admin key this lists every site; with a per-site token it lists only that site.</p>
+    <pre><code>{ "sites": ["my-site", "blog"] }</code></pre>
+
+    <h2 id="admin">Admin: site registry</h2>
+    <p>All <code>/admin/*</code> routes require the <strong>admin key</strong> — a per-site read token cannot manage the registry.</p>
+    <table>
+      <tr><th>Method &amp; path</th><th>Purpose</th></tr>
+      <tr><td><code>POST /admin/sites</code></td><td>Register a site. Body: <code>{ "siteId": "my-site", "allowedOrigins": [] }</code>. Returns the config plus a one-time <code>readToken</code>.</td></tr>
+      <tr><td><code>GET /admin/sites</code></td><td>List registered site configs (no token material is returned).</td></tr>
+      <tr><td><code>PATCH /admin/sites/{siteId}</code></td><td>Replace <code>allowedOrigins</code>. Body: <code>{ "allowedOrigins": ["https://example.com"] }</code>. Does not touch the read token. <code>404</code> if unknown.</td></tr>
+      <tr><td><code>DELETE /admin/sites/{siteId}</code></td><td>Remove a site and invalidate its read token. <code>204</code>, or <code>404</code> if unknown.</td></tr>
+      <tr><td><code>POST /admin/sites/{siteId}/token</code></td><td>Rotate the read token; the previous one stops working. Returns the new <code>readToken</code>.</td></tr>
+    </table>
+    <p><code>allowedOrigins</code> entries are origins (<code>https://host[:port]</code>, no path). An empty list accepts any origin; a non-empty list records hits only from a matching request <code>Origin</code> (case-insensitive, trailing slash ignored). The <code>readToken</code> is shown only once; only its SHA-256 is stored.</p>
+
+    <h2 id="health">GET /health</h2>
+    <pre><code>{ "status": "ok", "redis": true }</code></pre>
+    <p><code>status</code> is <code>degraded</code> when Redis is unreachable. Public, no credential required.</p>
+
+    <h2 id="static">Static assets</h2>
+    <table>
+      <tr><th>Path</th><th>Content</th></tr>
+      <tr><td><code>/</code></td><td>Cockpit dashboard</td></tr>
+      <tr><td><code>/effimero.js</code></td><td>The tracking snippet</td></tr>
+      <tr><td><code>/docs/api</code></td><td>Swagger UI</td></tr>
+    </table>
+
+    <nav class="pager">
+      <a href="self-hosting.html"><span class="dir">Previous</span>Self-hosting</a>
+      <a class="next" href="privacy.html"><span class="dir">Next</span>Privacy model</a>
+    </nav>
+  </main>
+</div>
+
+<footer class="site">
+  Effimero &middot; Free &amp; open source, AGPL-3.0 &middot; <a href="https://github.com/albertobarrago/effimero">GitHub</a>
+</footer>
+
+</body>
+</html>

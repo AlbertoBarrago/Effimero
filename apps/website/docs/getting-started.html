@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Getting started · Effimero</title>
+<meta name="description" content="Get Effimero running: start the server, register a site, add the snippet, and read your first stats." />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<a class="skip-link" href="#content">Skip to content</a>
+
+<nav class="topnav">
+  <span class="brand"><a href="../index.html">Effimero</a></span>
+  <div class="navlinks">
+    <a href="../index.html">Home</a>
+    <a href="api.html">API</a>
+    <a href="https://github.com/albertobarrago/effimero">GitHub</a>
+  </div>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <span class="side-title">Documentation</span>
+    <nav>
+      <a href="index.html">Overview</a>
+      <a href="getting-started.html" class="active">Getting started</a>
+      <a href="self-hosting.html">Self-hosting</a>
+      <a href="api.html">API reference</a>
+      <a href="privacy.html">Privacy model</a>
+      <a href="architecture.html">Architecture</a>
+    </nav>
+  </aside>
+
+  <main class="content" id="content">
+    <h1>Getting started</h1>
+    <p class="lead">From nothing to your first numbers in about five minutes.</p>
+
+    <h2 id="start">1. Start the server</h2>
+    <p>Effimero is one Docker image plus Redis. Clone, copy the sample env, and bring the stack up:</p>
+    <pre><code>git clone https://github.com/albertobarrago/effimero &amp;&amp; cd effimero
+cp .env.sample .env
+docker compose up -d
+curl http://localhost:3000/health   # {"status":"ok","redis":true}</code></pre>
+
+    <h2 id="register">2. Register the site</h2>
+    <p><code>/collect</code> only accepts hits for registered sites; an unknown <code>siteId</code> is silently ignored, so nobody can inject stats for a site you never set up. Register it with the admin key (see step&nbsp;4 for where that key comes from). You can restrict which origins may send hits with <code>allowedOrigins</code> — leave it empty to accept any:</p>
+    <pre><code>curl -X POST https://your-host/admin/sites \
+     -H "Authorization: Bearer &lt;STATS_API_KEY&gt;" \
+     -H "Content-Type: application/json" \
+     -d '{"siteId":"my-site","allowedOrigins":["https://my-site.com"]}'</code></pre>
+    <p>The response includes a <strong>per-site read token</strong>, shown only once — store it now:</p>
+    <pre><code>{ "siteId": "my-site", "allowedOrigins": ["https://my-site.com"],
+  "active": true, "createdAt": "…", "readToken": "…store-this-now…" }</code></pre>
+    <div class="callout"><p>List registered sites with <code>GET /admin/sites</code>, change the origins with <code>PATCH /admin/sites/my-site</code>, rotate a lost token with <code>POST /admin/sites/my-site/token</code>, and remove a site with <code>DELETE /admin/sites/my-site</code> — all with the admin key.</p></div>
+
+    <h2 id="snippet">3. Add the snippet</h2>
+    <p>Place this tag in your page <code>&lt;head&gt;</code> or before <code>&lt;/body&gt;</code>:</p>
+    <pre><code>&lt;script src="https://your-host/effimero.js" data-site="my-site" defer&gt;&lt;/script&gt;</code></pre>
+    <table>
+      <tr><th>Attribute</th><th>Required</th><th>Description</th></tr>
+      <tr><td><code>data-site</code></td><td>yes</td><td>Site identifier. Letters, digits, <code>.</code> <code>_</code> <code>-</code>, max 64 chars. Must match a registered site.</td></tr>
+      <tr><td><code>data-endpoint</code></td><td>no</td><td>Collect URL. Defaults to <code>/collect</code> on the snippet's host.</td></tr>
+    </table>
+    <p>The snippet weighs about 700&nbsp;bytes, tracks SPA navigations (pushState and popstate), and disables itself when the browser sends Do Not Track or Global Privacy Control.</p>
+
+    <h2 id="dashboard">4. Unlock the dashboard</h2>
+    <p>Read endpoints accept two credentials, both passed as <code>Authorization: Bearer &lt;value&gt;</code>:</p>
+    <ul>
+      <li>the <strong><code>STATS_API_KEY</code></strong> (admin) — reads every site and manages the registry;</li>
+      <li>a <strong>per-site read token</strong> (from step&nbsp;2) — reads only its own site. It is rejected with <code>403</code> for any other site, so it is safe to hand to a client.</li>
+    </ul>
+    <p>On first boot Effimero generates the admin key and logs it:</p>
+    <pre><code>docker compose logs effimero | grep generated
+# STATS_API_KEY not set, generated one for this run: &lt;key&gt;</code></pre>
+    <p>Open the dashboard at <code>http://localhost:3000/</code> or <code>https://your-host/</code>, paste either credential when prompted, and you are in. The generated admin key changes on every restart; set a stable one in <code>.env</code>:</p>
+    <pre><code>STATS_API_KEY=change-me</code></pre>
+
+    <h2 id="watch">5. Watch the data arrive</h2>
+    <p>Enter your site id and you will see live visitors, daily uniques and pageviews, top pages and referrers, browsers, OS, devices, languages, countries, and pageviews by hour. Prefer the API? Query it with either credential:</p>
+    <pre><code>curl https://your-host/stats/my-site?range=30 \
+  -H "Authorization: Bearer &lt;token-or-admin-key&gt;"</code></pre>
+
+    <nav class="pager">
+      <a href="index.html"><span class="dir">Previous</span>Overview</a>
+      <a class="next" href="self-hosting.html"><span class="dir">Next</span>Self-hosting</a>
+    </nav>
+  </main>
+</div>
+
+<footer class="site">
+  Effimero &middot; Free &amp; open source, AGPL-3.0 &middot; <a href="https://github.com/albertobarrago/effimero">GitHub</a>
+</footer>
+
+</body>
+</html>

@@ -47,6 +47,9 @@ sequenceDiagram
 | `salt.ts` | daily salt lifecycle, atomic creation | Redis |
 | `hash.ts` | pure hash function | node:crypto |
 | `enrichment.ts` | UA/geo/language to coarse buckets | ua-parser-js, geoip-lite |
+| `registry.ts` | site registry: which sites may collect, per-site config and read tokens | Redis |
+| `origins.ts` | per-site Origin allow-list matching | nothing |
+| `auth.ts` | access control: admin key vs scoped per-site read tokens | node:crypto, Redis |
 | `stats.ts` | write and read aggregate structures | Redis |
 | `schemas.ts` | request/response JSON Schemas, feeds validation and OpenAPI | nothing |
 | `index.ts` | HTTP wiring only: routes call one function each | all of the above |
@@ -54,6 +57,10 @@ sequenceDiagram
 Each module has a single reason to change (storage layout, hashing recipe, enrichment sources, transport), which keeps the SOLID story honest: `index.ts` knows HTTP, `stats.ts` knows Redis, and neither knows the other's internals.
 
 ## Key design decisions
+
+**Registry-gated, origin-checked ingest.** `/collect` records a hit only when the `siteId` is registered and the request `Origin` is within the site's allow-list (empty = any). Both checks are a single `HGETALL` on the site config and fail closed with a silent `204`, so the endpoint neither injects nor leaks anything for unknown sites.
+
+**Two-level read access.** The global `STATS_API_KEY` is the admin credential (registry management + read all). Each site also gets a read token whose SHA-256 is stored behind a reverse index; presenting it grants read access to that one site only. Access scope is resolved in `auth.ts` as a pure function, so the authorization logic is unit-tested without HTTP.
 
 **Server-side hashing.** The browser does not know its public IP, so the hash cannot be computed client-side. The server computes it in memory per request and discards the inputs. The payload from the browser carries no identity at all.
 

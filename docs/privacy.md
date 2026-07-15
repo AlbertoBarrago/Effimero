@@ -25,7 +25,7 @@ flowchart LR
 - **IP**: taken from the connection (or `X-Forwarded-For` with `TRUST_PROXY=true`). Used for the hash and a GeoIP country lookup, then discarded. Never written to any log or store.
 - **User-Agent**: used for the hash and parsed into coarse buckets (browser family, OS, device class). The raw string is never stored.
 - **dailySalt**: 32 random bytes generated at first use each UTC day, held only in Redis with a TTL, never logged. Not derivable from the date. When the day ends the salt is gone.
-- **siteId**: scopes the hash per site, so the same visitor on two Effimero-tracked sites produces unrelated hashes.
+- **siteId**: scopes the hash per site, so the same visitor on two Effimero-tracked sites produces unrelated hashes. The same siteId also scopes read access: a per-site token can read only its own aggregates, so a shared instance keeps tenants isolated.
 
 ## Why the daily salt matters
 

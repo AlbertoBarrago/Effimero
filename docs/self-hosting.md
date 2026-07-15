@@ -44,14 +44,32 @@ All configuration is via environment variables on the `effimero` service:
 |---|---|---|
 | `PORT` | `3000` | HTTP listen port |
 | `REDIS_URL` | `redis://localhost:6379` | Redis connection string |
-| `ALLOWED_ORIGINS` | `*` | Comma-separated list of CORS origins allowed to POST hits. Use your site origins in production. |
+| `ALLOWED_ORIGINS` | `*` | Comma-separated CORS origins for response headers (global). Per-site ingest restriction is configured per site via `allowedOrigins`, not here. |
 | `TRUST_PROXY` | `false` | Trust `X-Forwarded-For` for the client IP. Required behind any reverse proxy. |
 | `RETENTION_DAYS` | `90` | How long aggregate daily stats are kept in Redis. |
-| `STATS_API_KEY` | auto-generated | Bearer key required by `/stats`, `/live`, and `/sites`. Set it in `.env` to keep dashboard access stable across restarts. Empty/unset: a random key is generated and logged once at boot. Set `disabled` to make read endpoints public. |
+| `STATS_API_KEY` | auto-generated | **Admin** bearer key: manages the site registry (`/admin/*`) and reads every site (`/stats`, `/live`, `/sites`). Per-site read tokens (issued at registration) read a single site. Set it in `.env` to keep access stable across restarts. Empty/unset: a random key is generated and logged once at boot. Set `disabled` to make all endpoints public. |
+
+## Site registry & access levels
+
+Ingest is gated: `/collect` only records hits for **registered** sites, so nobody can inject stats for a site you never set up. Register each site with the admin key, and optionally restrict which origins may send hits:
+
+```sh
+curl -X POST https://your-host/admin/sites \
+     -H "Authorization: Bearer <STATS_API_KEY>" \
+     -H "Content-Type: application/json" \
+     -d '{"siteId":"my-site","allowedOrigins":["https://my-site.com"]}'
+```
+
+Registration returns a **per-site read token**, shown only once. Two credential levels exist, both passed as `Authorization: Bearer <value>`:
+
+- the **admin key** (`STATS_API_KEY`) — manages the registry and reads every site;
+- a **per-site read token** — reads only its own site (`403` for any other). Hand it to a client so they see their data and nothing else. Rotate it with `POST /admin/sites/my-site/token`.
+
+This makes a single instance safe to share across tenants: each site is isolated for both ingest (registry + origins) and reads (scoped token).
 
 ## Dashboard access key
 
-The dashboard reads `/stats`, `/live`, and `/sites`, so it needs the same bearer key as the API. If `STATS_API_KEY` is not set, Effimero generates a random key for the current server run:
+The dashboard reads `/stats`, `/live`, and `/sites`; it accepts either the admin key or a per-site read token. If `STATS_API_KEY` is not set, Effimero generates a random admin key for the current server run:
 
 ```sh
 docker compose logs effimero | grep generated
@@ -106,9 +124,11 @@ server {
 
 ## Hardening checklist
 
-- Restrict `ALLOWED_ORIGINS` to the sites that actually embed the snippet.
-- Do not expose Redis outside the Docker network.
+- Register only the sites you actually run; unregistered `siteId`s are dropped, so leaving the registry tight is the first line of defense against injected stats.
+- Set each site's `allowedOrigins` to the origins that embed its snippet, so only those origins can record hits.
+- Hand out **per-site read tokens** instead of the admin key; keep the admin key to yourself.
 - Keep `STATS_API_KEY` set to a strong value. Optionally add proxy auth for the dashboard, while leaving `/collect` and `/effimero.js` public.
+- Do not expose Redis outside the Docker network.
 - Keep `RETENTION_DAYS` as low as your reporting needs allow. Less retained data is always the better privacy default.
 
 ## Scaling notes

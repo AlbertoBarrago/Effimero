@@ -89,7 +89,7 @@
   <span class="brand">Effimero</span>
   <div class="navlinks">
     <a href="docs/index.html">Docs</a>
-    <a href="docs/index.html#api">API</a>
+    <a href="docs/api.html">API</a>
     <a href="https://github.com/albertobarrago/effimero">GitHub</a>
   </div>
 </nav>
@@ -111,6 +111,7 @@
     <span class="badge"><s>fingerprinting</s></span>
     <span class="badge"><s>consent banner</s></span>
     <span class="badge">✓ self-hosted</span>
+    <span class="badge">✓ multi-tenant</span>
     <span class="badge">✓ ~700 byte snippet</span>
     <span class="badge">✓ AGPL-3.0</span>
   </div>
@@ -179,10 +180,15 @@
   <p>Self-host with Docker in one command:</p>
   <pre><code>git clone https://github.com/albertobarrago/effimero && cd effimero
 docker compose up -d</code></pre>
+  <p>Register the site you want to track (only registered sites are collected):</p>
+  <pre><code>curl -X POST https://your-host/admin/sites \
+     -H "Authorization: Bearer &lt;STATS_API_KEY&gt;" \
+     -d '{"siteId":"my-site"}'</code></pre>
   <p>Then drop the snippet on your site:</p>
   <pre><code>&lt;script src="https://your-host/effimero.js" data-site="my-site" defer&gt;&lt;/script&gt;</code></pre>
   <p>Open the cockpit dashboard at <code>https://your-host/</code>. That's it: no consent banner needed,
-  because nothing identifying is ever stored, on the device or the server.</p>
+  because nothing identifying is ever stored, on the device or the server.
+  Full walkthrough in the <a href="docs/getting-started.html">getting-started guide</a>.</p>
 </section>
 
 <section class="wrap">

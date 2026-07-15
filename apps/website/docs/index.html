@@ -3,207 +3,78 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Effimero Docs</title>
-<meta name="description" content="Effimero documentation: getting started, self-hosting, API reference, privacy model, architecture." />
-<style>
-  :root {
-    color-scheme: light dark;
-    --accent: #3987e5;
-    --bg: #fcfcfb;
-    --surface: #f4f4f2;
-    --ink: #0b0b0b;
-    --ink-2: #52514e;
-    --border: rgba(11,11,11,0.12);
-    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0d1117;
-      --surface: #161b22;
-      --ink: #e6edf3;
-      --ink-2: #9da7b3;
-      --border: rgba(255,255,255,0.12);
-    }
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); line-height: 1.65; }
-  .topnav { display: flex; justify-content: space-between; align-items: center; max-width: 880px; margin: 0 auto; padding: 1rem 1.25rem; }
-  .brand { font-weight: 700; }
-  .brand a { color: var(--ink); text-decoration: none; }
-  .navlinks { display: flex; gap: 1.25rem; }
-  .navlinks a { color: var(--ink-2); text-decoration: none; font-size: 0.9rem; }
-  .navlinks a:hover { color: var(--accent); }
-  .wrap { max-width: 780px; margin: 0 auto; padding: 1.5rem 1.25rem 4rem; }
-  h1 { font-size: 2rem; margin: 1rem 0 0.5rem; }
-  h2 { font-size: 1.45rem; margin: 3rem 0 1rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
-  h3 { font-size: 1.05rem; margin: 1.75rem 0 0.5rem; }
-  p, li { color: var(--ink-2); }
-  strong, code { color: var(--ink); }
-  a { color: var(--accent); }
-  .toc { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1.5rem 0 0; }
-  .toc ul { margin: 0.5rem 0 0; padding-left: 1.25rem; }
-  .toc a { text-decoration: none; }
-  pre { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.5rem; margin: 1rem 0 1.5rem; overflow-x: auto; -webkit-overflow-scrolling: touch; font-size: 0.85rem; line-height: 1.5; }
-  code { font-family: ui-monospace, "SF Mono", monospace; font-size: 0.9em; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin: 1rem 0 1.5rem; display: block; overflow-x: auto; }
-  th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); white-space: nowrap; }
-  td:last-child { white-space: normal; min-width: 200px; }
-  th { color: var(--ink); }
-  td { color: var(--ink-2); }
-  .callout { border-left: 3px solid var(--accent); background: var(--surface); border-radius: 0 10px 10px 0; padding: 0.75rem 1.25rem; margin: 1rem 0 1.5rem; }
-  .callout p { margin: 0; }
-</style>
+<title>Documentation · Effimero</title>
+<meta name="description" content="Effimero documentation: getting started, self-hosting, the full API, the privacy model, and the architecture." />
+<link rel="stylesheet" href="style.css" />
 </head>
 <body>
+<a class="skip-link" href="#content">Skip to content</a>
 
 <nav class="topnav">
   <span class="brand"><a href="../index.html">Effimero</a></span>
   <div class="navlinks">
     <a href="../index.html">Home</a>
-    <a href="#api">API</a>
+    <a href="api.html">API</a>
     <a href="https://github.com/albertobarrago/effimero">GitHub</a>
   </div>
 </nav>
 
-<main class="wrap">
-  <h1>Documentation</h1>
-  <p>Everything you need to run Effimero: five minutes to first data, production deployment, the full API, and the privacy model in depth.</p>
+<div class="layout">
+  <aside class="sidebar">
+    <span class="side-title">Documentation</span>
+    <nav>
+      <a href="index.html" class="active">Overview</a>
+      <a href="getting-started.html">Getting started</a>
+      <a href="self-hosting.html">Self-hosting</a>
+      <a href="api.html">API reference</a>
+      <a href="privacy.html">Privacy model</a>
+      <a href="architecture.html">Architecture</a>
+    </nav>
+  </aside>
 
-  <div class="toc">
-    <strong>Contents</strong>
-    <ul>
-      <li><a href="#getting-started">Getting started</a></li>
-      <li><a href="#self-hosting">Self-hosting &amp; configuration</a></li>
-      <li><a href="#api">API reference</a></li>
-      <li><a href="#privacy">Privacy model</a></li>
-      <li><a href="#architecture">Architecture</a></li>
-    </ul>
-  </div>
+  <main class="content" id="content">
+    <h1>Documentation</h1>
+    <p class="lead">Everything you need to run Effimero: five minutes to first data, production deployment, the full API, and the privacy model in depth.</p>
 
-  <h2 id="getting-started">Getting started</h2>
+    <div class="cards">
+      <a class="card" href="getting-started.html">
+        <h3>Getting started &rarr;</h3>
+        <p>Start the server, register a site, drop in the snippet, and read your first numbers.</p>
+      </a>
+      <a class="card" href="self-hosting.html">
+        <h3>Self-hosting &rarr;</h3>
+        <p>Docker Compose, configuration, reverse proxy, the site registry, access levels, and hardening.</p>
+      </a>
+      <a class="card" href="api.html">
+        <h3>API reference &rarr;</h3>
+        <p>Ingest, scoped read endpoints, and the admin registry routes. Interactive Swagger at <code>/docs/api</code>.</p>
+      </a>
+      <a class="card" href="privacy.html">
+        <h3>Privacy model &rarr;</h3>
+        <p>What happens to visitor data, why the daily salt matters, and what is deliberately impossible.</p>
+      </a>
+      <a class="card" href="architecture.html">
+        <h3>Architecture &rarr;</h3>
+        <p>Monorepo layout, data flow, module responsibilities, and the key design decisions.</p>
+      </a>
+    </div>
 
-  <h3>1. Start the server</h3>
-  <pre><code>git clone https://github.com/albertobarrago/effimero && cd effimero
-cp .env.sample .env
-docker compose up -d
-curl http://localhost:3000/health   # {"status":"ok","redis":true}</code></pre>
+    <h2>What Effimero is</h2>
+    <p>A privacy-first, self-hosted web analytics server. It counts unique visitors with no cookies, no localStorage, and no fingerprinting: visitor identity is a <strong>daily-salted hash</strong> computed in memory and never stored, feeding only aggregate counters and HyperLogLog sketches. Privacy is a property of the algorithm, not a promise in a policy page.</p>
 
-  <h3>2. Add the snippet</h3>
-  <pre><code>&lt;script src="https://your-host/effimero.js" data-site="my-site" defer&gt;&lt;/script&gt;</code></pre>
-  <table>
-    <tr><th>Attribute</th><th>Required</th><th>Description</th></tr>
-    <tr><td><code>data-site</code></td><td>yes</td><td>Site identifier. Letters, digits, <code>.</code> <code>_</code> <code>-</code>, max 64 chars.</td></tr>
-    <tr><td><code>data-endpoint</code></td><td>no</td><td>Collect URL. Defaults to <code>/collect</code> on the snippet's host.</td></tr>
-  </table>
-  <p>The snippet weighs about 700 bytes, tracks SPA navigations (pushState and popstate), and disables itself when the browser sends Do Not Track or Global Privacy Control.</p>
+    <h2>Multi-tenant by design</h2>
+    <p>A single instance can serve many sites while keeping them isolated. Ingest is gated by an explicit <strong>site registry</strong> and optional per-site <strong>origin allow-lists</strong>; reads are gated by <strong>per-site tokens</strong> that unlock exactly one site. See <a href="self-hosting.html#site-registry--access-levels">Self-hosting</a> for the full model.</p>
 
-  <h3>3. Unlock the dashboard</h3>
-  <p>Read endpoints are protected by <code>STATS_API_KEY</code>. If you did not set one, Effimero generates a key on startup:</p>
-  <pre><code>docker compose logs effimero | grep generated</code></pre>
-  <p>Open the dashboard at <code>http://localhost:3000/</code> or <code>https://your-host/</code>, paste the key when prompted, and enter your site id. Auto-generated keys change whenever the server restarts; set <code>STATS_API_KEY</code> in <code>.env</code> to keep access stable.</p>
+    <nav class="pager">
+      <span class="empty"></span>
+      <a class="next" href="getting-started.html"><span class="dir">Next</span>Getting started</a>
+    </nav>
+  </main>
+</div>
 
-  <h3>4. Watch the data</h3>
-  <p>The dashboard shows live visitors, daily uniques and pageviews, top pages and referrers, browsers, OS, devices, languages, countries, and pageviews by hour.</p>
-
-  <h2 id="self-hosting">Self-hosting &amp; configuration</h2>
-  <p>Effimero is one Docker image plus Redis. All configuration is environment variables:</p>
-  <table>
-    <tr><th>Variable</th><th>Default</th><th>Description</th></tr>
-    <tr><td><code>PORT</code></td><td><code>3000</code></td><td>HTTP listen port</td></tr>
-    <tr><td><code>REDIS_URL</code></td><td><code>redis://localhost:6379</code></td><td>Redis connection string</td></tr>
-    <tr><td><code>ALLOWED_ORIGINS</code></td><td><code>*</code></td><td>Comma-separated CORS origins allowed to POST hits. Restrict in production.</td></tr>
-    <tr><td><code>TRUST_PROXY</code></td><td><code>false</code></td><td>Trust <code>X-Forwarded-For</code>. Required behind any reverse proxy.</td></tr>
-    <tr><td><code>RETENTION_DAYS</code></td><td><code>90</code></td><td>Days of aggregate stats kept in Redis</td></tr>
-    <tr><td><code>STATS_API_KEY</code></td><td>auto-generated</td><td>Bearer key protecting <code>/stats</code>, <code>/live</code>, and <code>/sites</code>. Set it in <code>.env</code> to keep dashboard access stable across restarts. Empty/unset: a random key is generated and logged once at boot (<code>docker compose logs effimero | grep generated</code>). Set <code>disabled</code> to make reads public.</td></tr>
-  </table>
-
-  <h3>Dashboard access key</h3>
-  <p>The dashboard uses the same bearer key as API reads. Retrieve the generated key with:</p>
-  <pre><code>docker compose logs effimero | grep generated</code></pre>
-  <p>For production, set a stable value in <code>.env</code> and rotate it by changing that value and restarting the <code>effimero</code> service.</p>
-  <pre><code>STATS_API_KEY=change-me</code></pre>
-
-  <div class="callout"><p><strong>The one setting that bites:</strong> behind nginx, Caddy, or Traefik you must set <code>TRUST_PROXY=true</code>, otherwise every visitor appears to come from the proxy IP and unique counts flatline at 1.</p></div>
-
-  <h3>nginx example</h3>
-  <pre><code>location / {
-    proxy_pass http://effimero:3000;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header Host $host;
-}</code></pre>
-
-  <h3>Hardening</h3>
-  <ul>
-    <li>Restrict <code>ALLOWED_ORIGINS</code> to the sites embedding the snippet.</li>
-    <li>Keep Redis inside the Docker network.</li>
-    <li>Keep <code>STATS_API_KEY</code> set to a strong value. Optionally add proxy auth for the dashboard, while leaving <code>/collect</code> and <code>/effimero.js</code> public.</li>
-    <li>Multiple server replicas are safe: salt creation is atomic (<code>SET NX</code>), the server is stateless.</li>
-  </ul>
-
-  <h2 id="api">API reference</h2>
-  <p>The interactive, always-current reference is the Swagger UI served by the API at <code>/docs/api</code> (OpenAPI JSON at <code>/docs/api/json</code>). Summary:</p>
-
-  <div class="callout"><p><strong>Authentication:</strong> read endpoints require <code>Authorization: Bearer &lt;STATS_API_KEY&gt;</code>. Without configuration a random key is generated at every boot and printed once in the server logs; the dashboard asks for it and keeps it in sessionStorage for the tab's lifetime. <code>/collect</code> stays public by design: it is written to by your visitors' browsers and carries no identity.</p></div>
-
-  <h3>POST /collect</h3>
-  <pre><code>{ "siteId": "my-site", "path": "/pricing", "referrer": "https://google.com/" }</code></pre>
-  <p>Records one pageview. Returns <code>204</code>, or <code>400</code> on schema violation. The payload carries no identity: the visitor hash is computed server-side from connection IP and User-Agent, in memory only.</p>
-
-  <h3>GET /stats/{siteId}?range={days}</h3>
-  <p>Aggregates for the last <code>range</code> days (default 30): <code>days[]</code> with uniques and pageviews, <code>totals</code>, <code>topPaths</code>, <code>topReferrers</code>, <code>hours[24]</code>, and breakdowns for browsers, os, devices, languages, countries.</p>
-  <div class="callout"><p><strong>Accuracy:</strong> daily uniques are HyperLogLog counts (~0.81% error). The range-wide total merges daily-salted HLLs, so a returning visitor counts once per day: treat it as an upper bound.</p></div>
-
-  <h3>GET /live/{siteId}</h3>
-  <p>Unique visitors in roughly the last 5 minutes: <code>{ "live": 7 }</code></p>
-
-  <h3>GET /health</h3>
-  <p><code>{ "status": "ok", "redis": true }</code>, degraded when Redis is unreachable.</p>
-
-  <h2 id="privacy">Privacy model</h2>
-  <p>Every pageview computes, in memory on the server:</p>
-  <pre><code>visitorHash = SHA-256(IP | User-Agent | dailySalt | siteId)</code></pre>
-  <ul>
-    <li><strong>IP</strong>: used for the hash and a GeoIP country lookup, then discarded. Never logged or stored.</li>
-    <li><strong>User-Agent</strong>: hashed, and parsed into coarse buckets (browser family, OS, device class). Raw string never stored.</li>
-    <li><strong>dailySalt</strong>: 32 random bytes per UTC day, held only in Redis with a TTL. Not derivable from the date. Gone at midnight.</li>
-    <li><strong>siteId</strong>: isolates sites, so the same visitor on two Effimero sites yields unrelated hashes.</li>
-  </ul>
-  <p>Without the daily salt, an IP+UA hash would be a persistent pseudonymous identifier, correlatable across days and reversible via rainbow tables over the IPv4 space. The rotation breaks both: yesterday's hashes share no relationship with today's, and reversing requires a salt that no longer exists. Even the operator cannot reconstruct a visitor's history.</p>
-
-  <h3>What is stored, exactly</h3>
-  <p>Per site and UTC day: one HyperLogLog sketch (individual hashes not recoverable), one pageview counter, and counter hashes for paths, referrers, browsers, OS, devices, languages, countries, hours. There is no event log. No row corresponds to one visitor or one visit.</p>
-
-  <h3>Deliberately impossible</h3>
-  <ul>
-    <li>Returning visitors and retention curves: identity does not survive midnight UTC.</li>
-    <li>Cross-site tracking: the siteId in the hash isolates sites.</li>
-    <li>Funnels, journeys, session replay: no per-visitor data exists.</li>
-    <li>Reconstructing an individual's activity, even with full database access.</li>
-  </ul>
-
-  <h3>Consent</h3>
-  <p>Effimero processes the IP transiently, stores no personal data, and cannot single out an individual. Under the prevailing interpretation (matching CNIL guidance on exempt audience measurement) this does not require prior consent, but regulations evolve: verify with your own counsel. What Effimero guarantees is technical: there is no stored personal data to disclose, export, or delete.</p>
-
-  <h2 id="architecture">Architecture</h2>
-  <pre><code>browser ──POST /collect──▶ Fastify
-                             │  getDailySalt(redis)        salt.ts
-                             │  visitorHash(ip, ua, salt)  hash.ts
-                             │  deriveDimensions(ip, ua)   enrichment.ts
-                             ▼
-                           recordHit(redis)                stats.ts
-                             │  PFADD uniques + live, INCR pageviews,
-                             │  HINCRBY paths/referrers/dimensions/hours
-                             ▼
-dashboard ◀──GET /stats,/live── getStats / getLiveVisitors</code></pre>
-  <p>Each server module has a single reason to change: <code>index.ts</code> knows HTTP, <code>stats.ts</code> knows Redis, <code>enrichment.ts</code> knows parsing, and none knows the others' internals. JSON Schemas in <code>schemas.ts</code> both validate requests and generate the OpenAPI document: one source of truth.</p>
-  <h3>Key decisions</h3>
-  <ul>
-    <li><strong>Server-side hashing</strong>: the browser does not know its public IP, and this way the payload carries no identity at all.</li>
-    <li><strong>HyperLogLog</strong>: exact counting would mean storing every hash (a de-anonymization surface). HLL gives ~0.81% error in at most 12 KB per key, and is non-reversible by construction.</li>
-    <li><strong>Salt via <code>SET NX</code> + TTL</strong>: no cron, no clock skew, replicas agree atomically.</li>
-    <li><strong>Per-key TTL retention</strong>: cleanup falls out of Redis expiry, nothing to garbage-collect.</li>
-  </ul>
-</main>
+<footer class="site">
+  Effimero &middot; Free &amp; open source, AGPL-3.0 &middot; <a href="https://github.com/albertobarrago/effimero">GitHub</a>
+</footer>
 
 </body>
 </html>

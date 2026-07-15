@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Privacy model · Effimero</title>
+<meta name="description" content="Exactly what happens to visitor data in Effimero, why the daily salt matters, and what is deliberately impossible." />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<a class="skip-link" href="#content">Skip to content</a>
+
+<nav class="topnav">
+  <span class="brand"><a href="../index.html">Effimero</a></span>
+  <div class="navlinks">
+    <a href="../index.html">Home</a>
+    <a href="api.html">API</a>
+    <a href="https://github.com/albertobarrago/effimero">GitHub</a>
+  </div>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <span class="side-title">Documentation</span>
+    <nav>
+      <a href="index.html">Overview</a>
+      <a href="getting-started.html">Getting started</a>
+      <a href="self-hosting.html">Self-hosting</a>
+      <a href="api.html">API reference</a>
+      <a href="privacy.html" class="active">Privacy model</a>
+      <a href="architecture.html">Architecture</a>
+    </nav>
+  </aside>
+
+  <main class="content" id="content">
+    <h1>Privacy model</h1>
+    <p class="lead">Effimero's core claim is that privacy comes from the algorithm, not from a policy document. Here is exactly what happens to visitor data, so you can verify it.</p>
+
+    <h2 id="hash">The visitor hash</h2>
+    <p>Every pageview computes, in memory, on the server:</p>
+    <pre><code>visitorHash = SHA-256(IP | User-Agent | dailySalt | siteId)</code></pre>
+
+    <div class="diagram">
+      <svg viewBox="0 0 720 210" role="img" aria-label="IP, User-Agent and a daily salt combine into SHA-256, which feeds a HyperLogLog counter. The IP is discarded and the salt rotates daily.">
+        <rect x="10" y="15" width="150" height="34" rx="8" />
+        <text x="85" y="37" text-anchor="middle">IP address</text>
+        <rect x="10" y="65" width="150" height="34" rx="8" />
+        <text x="85" y="87" text-anchor="middle">User-Agent</text>
+        <rect x="10" y="115" width="150" height="34" rx="8" />
+        <text x="85" y="137" text-anchor="middle">daily salt 🎲</text>
+        <path class="arrow" d="M160 32 H 230 V 78 H 260" />
+        <path class="arrow" d="M160 82 H 260" />
+        <path class="arrow" d="M160 132 H 230 V 86 H 260" />
+        <rect x="260" y="60" width="140" height="44" rx="8" />
+        <text x="330" y="87" text-anchor="middle">SHA-256</text>
+        <path class="arrow" d="M400 82 H 470" />
+        <rect x="470" y="60" width="160" height="44" rx="8" />
+        <text x="550" y="80" text-anchor="middle">HyperLogLog</text>
+        <text x="550" y="96" text-anchor="middle" class="dim">unique count only</text>
+        <text x="85" y="170" class="dim" text-anchor="middle">IP: used in memory, never stored</text>
+        <text x="85" y="186" class="dim" text-anchor="middle">salt: rotates at midnight UTC</text>
+        <text x="330" y="180" class="dim" text-anchor="middle">hash: never stored verbatim</text>
+        <text x="550" y="180" class="dim" text-anchor="middle">only the unique count survives</text>
+      </svg>
+    </div>
+
+    <ul>
+      <li><strong>IP</strong>: taken from the connection (or <code>X-Forwarded-For</code> with <code>TRUST_PROXY=true</code>). Used for the hash and a GeoIP country lookup, then discarded. Never written to any log or store.</li>
+      <li><strong>User-Agent</strong>: used for the hash and parsed into coarse buckets (browser family, OS, device class). The raw string is never stored.</li>
+      <li><strong>dailySalt</strong>: 32 random bytes generated at first use each UTC day, held only in Redis with a TTL, never logged. Not derivable from the date. When the day ends the salt is gone.</li>
+      <li><strong>siteId</strong>: scopes the hash per site, so the same visitor on two Effimero-tracked sites produces unrelated hashes. The same siteId also scopes read access: a per-site token can read only its own aggregates, so a shared instance keeps tenants isolated.</li>
+    </ul>
+
+    <h2 id="salt">Why the daily salt matters</h2>
+    <p>A hash of IP&nbsp;+&nbsp;User-Agent alone would be a persistent pseudonymous identifier: anyone holding it could correlate a visitor across days, and rainbow tables over the IPv4 space would make it reversible. The daily salt breaks both attacks:</p>
+    <ul>
+      <li>Yesterday's hashes and today's hashes share no mathematical relationship.</li>
+      <li>Reversing a hash requires the salt, which no longer exists after 24 hours.</li>
+      <li>Even the operator cannot reconstruct a visitor's history. There is nothing to leak, sell, or subpoena.</li>
+    </ul>
+    <p>This is the same reasoning <a href="https://plausible.io/data-policy">Plausible</a> and the original <a href="https://inmargin.io/blog/tracking-unique-visitors-without-cookies">Margin blog post</a> apply.</p>
+
+    <h2 id="stored">What is stored, exactly</h2>
+    <p>Per site and per UTC day, Redis holds only:</p>
+    <table>
+      <tr><th>Key</th><th>Structure</th><th>Content</th></tr>
+      <tr><td><code>uniques</code></td><td>HyperLogLog</td><td>Cardinality sketch of visitor hashes. Individual hashes are not recoverable from it.</td></tr>
+      <tr><td><code>pageviews</code></td><td>counter</td><td>A single integer.</td></tr>
+      <tr><td><code>paths</code>, <code>referrers</code></td><td>hash of counters</td><td><code>"/pricing" &rarr; 42</code>, <code>"google.com" &rarr; 17</code></td></tr>
+      <tr><td><code>browser</code>, <code>os</code>, <code>device</code>, <code>language</code>, <code>country</code></td><td>hash of counters</td><td><code>"Chrome" &rarr; 90</code>, <code>"IT" &rarr; 75</code></td></tr>
+      <tr><td><code>hours</code></td><td>hash of counters</td><td>pageviews per hour 0&ndash;23</td></tr>
+      <tr><td><code>live:{bucket}</code></td><td>HyperLogLog, TTL &asymp; 7&nbsp;min</td><td>live visitor sketch</td></tr>
+    </table>
+    <p>There is no event log. No row anywhere corresponds to one visitor or one visit.</p>
+
+    <h2 id="impossible">What is deliberately impossible</h2>
+    <ul>
+      <li><strong>Returning visitors / retention curves</strong>: identity does not survive midnight UTC.</li>
+      <li><strong>Cross-site tracking</strong>: the siteId in the hash isolates sites.</li>
+      <li><strong>Session replay, funnels, user journeys</strong>: no per-visitor data exists.</li>
+      <li><strong>Reconstructing an individual's activity</strong>, even with full database access.</li>
+    </ul>
+
+    <h2 id="client">Client-side behavior</h2>
+    <p>The snippet sets no cookie, writes nothing to localStorage or IndexedDB, and reads nothing device-specific (no canvas, fonts, or hardware probing). It sends only <code>siteId</code>, <code>path</code>, and <code>referrer</code>, and honors Do Not Track and Global Privacy Control by disabling itself entirely.</p>
+
+    <h2 id="consent">Consent banners and GDPR</h2>
+    <p>Effimero processes the IP transiently in memory, stores no personal data, and cannot single out an individual. Under the prevailing interpretation (matching CNIL guidance on exempt audience measurement) this does not require prior consent. That said, regulatory interpretations evolve and jurisdictions differ: verify with your own counsel. What Effimero guarantees is technical — there is no stored personal data to disclose, export, or delete.</p>
+
+    <h2 id="tradeoffs">Known accuracy trade-offs</h2>
+    <ul>
+      <li>Visitors sharing IP and identical browser version within one day count as one.</li>
+      <li>A visitor whose IP changes mid-day (mobile roaming) counts twice.</li>
+      <li>HyperLogLog counts carry ~0.81% standard error.</li>
+    </ul>
+    <p>These are the honest costs of not identifying people.</p>
+
+    <nav class="pager">
+      <a href="api.html"><span class="dir">Previous</span>API reference</a>
+      <a class="next" href="architecture.html"><span class="dir">Next</span>Architecture</a>
+    </nav>
+  </main>
+</div>
+
+<footer class="site">
+  Effimero &middot; Free &amp; open source, AGPL-3.0 &middot; <a href="https://github.com/albertobarrago/effimero">GitHub</a>
+</footer>
+
+</body>
+</html>

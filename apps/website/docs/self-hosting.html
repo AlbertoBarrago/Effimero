@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Self-hosting · Effimero</title>
+<meta name="description" content="Deploy Effimero in production: Docker Compose, configuration, reverse proxy, the site registry, access levels, and hardening." />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<a class="skip-link" href="#content">Skip to content</a>
+
+<nav class="topnav">
+  <span class="brand"><a href="../index.html">Effimero</a></span>
+  <div class="navlinks">
+    <a href="../index.html">Home</a>
+    <a href="api.html">API</a>
+    <a href="https://github.com/albertobarrago/effimero">GitHub</a>
+  </div>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <span class="side-title">Documentation</span>
+    <nav>
+      <a href="index.html">Overview</a>
+      <a href="getting-started.html">Getting started</a>
+      <a href="self-hosting.html" class="active">Self-hosting</a>
+      <a href="api.html">API reference</a>
+      <a href="privacy.html">Privacy model</a>
+      <a href="architecture.html">Architecture</a>
+    </nav>
+  </aside>
+
+  <main class="content" id="content">
+    <h1>Self-hosting &amp; configuration</h1>
+    <p class="lead">Effimero ships as a single Docker image plus Redis. This page covers production deployment.</p>
+
+    <h2 id="docker-compose">Docker Compose (recommended)</h2>
+    <p>The repository includes a production-ready <code>docker-compose.yml</code>:</p>
+    <pre><code>cp .env.sample .env
+docker compose up -d</code></pre>
+    <p>Redis persists to a named volume with RDB snapshots every 5&nbsp;minutes. Aggregate stats survive restarts; the daily salt intentionally lives only in Redis memory keys with a TTL.</p>
+
+    <h2 id="indie">Small indie deployment</h2>
+    <p>For a small project, a single low-cost VPS is enough:</p>
+    <ul>
+      <li>Hetzner Cloud CX23, or an equivalent small VPS</li>
+      <li>Ubuntu LTS, with Docker and Docker Compose</li>
+      <li>Caddy in front for HTTPS</li>
+      <li>Provider backups enabled</li>
+    </ul>
+    <p>Expect roughly 5&ndash;6&nbsp;EUR/month for server plus backups, excluding the domain. One VM, one Compose stack, one Redis volume, no managed services. Recommended <code>.env</code>:</p>
+    <pre><code>STATS_API_KEY=&lt;strong-random-key&gt;
+TRUST_PROXY=true
+ALLOWED_ORIGINS=https://your-site.example
+RETENTION_DAYS=90</code></pre>
+    <p>Use <code>TRUST_PROXY=true</code> only when Effimero is actually behind Caddy, nginx, Traefik, or another reverse proxy that forwards the real client IP.</p>
+
+    <h2 id="configuration">Configuration reference</h2>
+    <p>All configuration is via environment variables on the <code>effimero</code> service:</p>
+    <table>
+      <tr><th>Variable</th><th>Default</th><th>Description</th></tr>
+      <tr><td><code>PORT</code></td><td><code>3000</code></td><td>HTTP listen port</td></tr>
+      <tr><td><code>REDIS_URL</code></td><td><code>redis://localhost:6379</code></td><td>Redis connection string</td></tr>
+      <tr><td><code>ALLOWED_ORIGINS</code></td><td><code>*</code></td><td>Comma-separated CORS origins for response headers (global). Per-site ingest restriction is configured per site via <code>allowedOrigins</code>, not here.</td></tr>
+      <tr><td><code>TRUST_PROXY</code></td><td><code>false</code></td><td>Trust <code>X-Forwarded-For</code> for the client IP. Required behind any reverse proxy.</td></tr>
+      <tr><td><code>RETENTION_DAYS</code></td><td><code>90</code></td><td>How long aggregate daily stats are kept in Redis.</td></tr>
+      <tr><td><code>STATS_API_KEY</code></td><td>auto-generated</td><td><strong>Admin</strong> bearer key: manages the registry (<code>/admin/*</code>) and reads every site. Per-site read tokens read a single site. Set it in <code>.env</code> to keep access stable across restarts. Empty/unset: a random key is generated and logged once at boot. Set <code>disabled</code> to make all endpoints public.</td></tr>
+    </table>
+
+    <h2 id="site-registry--access-levels">Site registry &amp; access levels</h2>
+    <p>Ingest is gated: <code>/collect</code> only records hits for <strong>registered</strong> sites, so nobody can inject stats for a site you never set up. Register each site with the admin key, and optionally restrict which origins may send hits:</p>
+    <pre><code>curl -X POST https://your-host/admin/sites \
+     -H "Authorization: Bearer &lt;STATS_API_KEY&gt;" \
+     -H "Content-Type: application/json" \
+     -d '{"siteId":"my-site","allowedOrigins":["https://my-site.com"]}'</code></pre>
+    <p>Registration returns a <strong>per-site read token</strong>, shown only once. Two credential levels exist, both passed as <code>Authorization: Bearer &lt;value&gt;</code>:</p>
+    <ul>
+      <li>the <strong>admin key</strong> (<code>STATS_API_KEY</code>) — manages the registry and reads every site;</li>
+      <li>a <strong>per-site read token</strong> — reads only its own site (<code>403</code> for any other). Hand it to a client so they see their data and nothing else. Rotate it with <code>POST /admin/sites/my-site/token</code>.</li>
+    </ul>
+    <p>This makes a single instance safe to share across tenants: each site is isolated for both ingest (registry + origins) and reads (scoped token).</p>
+
+    <h2 id="dashboard-key">Dashboard access key</h2>
+    <p>The dashboard reads <code>/stats</code>, <code>/live</code>, and <code>/sites</code>; it accepts either the admin key or a per-site read token. If <code>STATS_API_KEY</code> is not set, Effimero generates a random admin key for the current server run:</p>
+    <pre><code>docker compose logs effimero | grep generated</code></pre>
+    <p>Auto-generated keys are convenient for local testing but change on restart. For production, set a stable key in <code>.env</code> and rotate it by changing that value and restarting the <code>effimero</code> service:</p>
+    <pre><code>STATS_API_KEY=change-me</code></pre>
+
+    <h2 id="reverse-proxy">Reverse proxy</h2>
+    <p>In production you will normally terminate TLS in front of Effimero. Two things matter: set <code>TRUST_PROXY=true</code>, and forward the real client IP.</p>
+    <div class="callout warn"><p><strong>The one setting that bites:</strong> behind nginx, Caddy, or Traefik you must set <code>TRUST_PROXY=true</code>, otherwise every visitor appears to come from the proxy IP and unique counts flatline at&nbsp;1.</p></div>
+    <h3>Caddy</h3>
+    <pre><code>analytics.example.com {
+    reverse_proxy effimero:3000
+}</code></pre>
+    <p>Caddy sets <code>X-Forwarded-For</code> automatically.</p>
+    <h3>nginx</h3>
+    <pre><code>server {
+    listen 443 ssl;
+    server_name analytics.example.com;
+
+    location / {
+        proxy_pass http://effimero:3000;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Host $host;
+    }
+}</code></pre>
+
+    <h2 id="hardening">Hardening checklist</h2>
+    <ul>
+      <li>Register only the sites you actually run; unregistered <code>siteId</code>s are dropped, so a tight registry is the first line of defense against injected stats.</li>
+      <li>Set each site's <code>allowedOrigins</code> to the origins that embed its snippet, so only those origins can record hits.</li>
+      <li>Hand out <strong>per-site read tokens</strong> instead of the admin key; keep the admin key to yourself.</li>
+      <li>Keep <code>STATS_API_KEY</code> set to a strong value. Optionally add proxy auth for the dashboard, while leaving <code>/collect</code> and <code>/effimero.js</code> public.</li>
+      <li>Do not expose Redis outside the Docker network.</li>
+      <li>Keep <code>RETENTION_DAYS</code> as low as your reporting needs allow. Less retained data is always the better privacy default.</li>
+    </ul>
+
+    <h2 id="scaling">Scaling &amp; backup</h2>
+    <ul>
+      <li>The server is stateless; run multiple replicas against the same Redis. Daily salt creation is atomic (<code>SET NX</code>), so concurrent instances agree on the salt.</li>
+      <li>Redis memory use is modest: HyperLogLog keys are at most 12&nbsp;KB each regardless of traffic, plus small counter hashes per site and day.</li>
+      <li>Back up only the Redis volume (aggregate history). Never back up the daily salt: losing it is by design, and restoring an old one would weaken the privacy model.</li>
+    </ul>
+
+    <nav class="pager">
+      <a href="getting-started.html"><span class="dir">Previous</span>Getting started</a>
+      <a class="next" href="api.html"><span class="dir">Next</span>API reference</a>
+    </nav>
+  </main>
+</div>
+
+<footer class="site">
+  Effimero &middot; Free &amp; open source, AGPL-3.0 &middot; <a href="https://github.com/albertobarrago/effimero">GitHub</a>
+</footer>
+
+</body>
+</html>
