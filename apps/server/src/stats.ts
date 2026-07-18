@@ -17,6 +17,10 @@ const RETENTION_SECONDS = config.retentionDays * 86400;
 const LIVE_BUCKET_SECONDS = 150;
 
 const DIMENSION_KEYS = ["browser", "os", "device", "language", "country"] as const;
+const HASH_FIELDS = ["paths", "referrers", "hours", ...DIMENSION_KEYS] as const;
+
+type HashField = (typeof HASH_FIELDS)[number];
+type HashTotals = Record<HashField, Map<string, number>>;
 
 /** Bucket for path/referrer values beyond the per-day cardinality cap. */
 export const OVERFLOW_FIELD = "__other__";
@@ -137,51 +141,36 @@ export interface SiteStats {
 /** Aggregates stats for the last `rangeDays` days, ending today (UTC). */
 export async function getStats(redis: Redis, siteId: string, rangeDays: number): Promise<SiteStats> {
   const days = lastDays(rangeDays);
-  // Keep in sync with the read order inside the pipeline loop below.
-  const FIELDS = ["uniques", "pageviews", "paths", "referrers", "hours", ...DIMENSION_KEYS] as const;
 
   const pipeline = redis.pipeline();
   for (const day of days) {
     const prefix = `site:${siteId}:${day}`;
     pipeline.pfcount(`${prefix}:uniques`);
     pipeline.get(`${prefix}:pageviews`);
-    for (const field of FIELDS.slice(2)) pipeline.hgetall(`${prefix}:${field}`);
+    for (const field of HASH_FIELDS) pipeline.hgetall(`${prefix}:${field}`);
   }
   pipeline.pfcount(...days.map((day) => `site:${siteId}:${day}:uniques`));
   const results = (await pipeline.exec()) ?? [];
 
   const dayStats: DayStats[] = [];
-  const totals = {
-    paths: new Map<string, number>(),
-    referrers: new Map<string, number>(),
-    hours: new Map<string, number>(),
-    browser: new Map<string, number>(),
-    os: new Map<string, number>(),
-    device: new Map<string, number>(),
-    language: new Map<string, number>(),
-    country: new Map<string, number>(),
-  };
+  const totals = emptyHashTotals();
+  const resultsPerDay = 2 + HASH_FIELDS.length;
 
   days.forEach((day, i) => {
-    const base = i * FIELDS.length;
+    const base = i * resultsPerDay;
     dayStats.push({
       day,
       uniques: Number(results[base]?.[1] ?? 0),
       pageviews: Number(results[base + 1]?.[1] ?? 0),
     });
-    accumulate(totals.paths, results[base + 2]?.[1]);
-    accumulate(totals.referrers, results[base + 3]?.[1]);
-    accumulate(totals.hours, results[base + 4]?.[1]);
-    accumulate(totals.browser, results[base + 5]?.[1]);
-    accumulate(totals.os, results[base + 6]?.[1]);
-    accumulate(totals.device, results[base + 7]?.[1]);
-    accumulate(totals.language, results[base + 8]?.[1]);
-    accumulate(totals.country, results[base + 9]?.[1]);
+    HASH_FIELDS.forEach((field, fieldIndex) => {
+      accumulate(totals[field], results[base + 2 + fieldIndex]?.[1]);
+    });
   });
 
   // Merged PFCOUNT across all days: still daily-salted, so this is NOT
   // cross-day uniques — it's an upper bound used only for the ratio.
-  const mergedUniques = Number(results[days.length * FIELDS.length]?.[1] ?? 0);
+  const mergedUniques = Number(results[days.length * resultsPerDay]?.[1] ?? 0);
   const totalPageviews = dayStats.reduce((sum, d) => sum + d.pageviews, 0);
 
   const hours = Array.from({ length: 24 }, (_, h) => totals.hours.get(String(h)) ?? 0);
@@ -202,6 +191,10 @@ export async function getStats(redis: Redis, siteId: string, rangeDays: number):
     languages: toLabelled(totals.language),
     countries: toLabelled(totals.country),
   };
+}
+
+function emptyHashTotals(): HashTotals {
+  return Object.fromEntries(HASH_FIELDS.map((field) => [field, new Map<string, number>()])) as HashTotals;
 }
 
 function toLabelled(map: Map<string, number>): Array<{ label: string; count: number }> {

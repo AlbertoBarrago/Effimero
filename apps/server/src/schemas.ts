@@ -4,6 +4,30 @@
  * OpenAPI document served at /docs/api.
  */
 
+const SITE_ID = { type: "string", pattern: "^[a-zA-Z0-9._-]{1,64}$" } as const;
+const SITE_PARAMS = {
+  type: "object",
+  required: ["siteId"],
+  properties: { siteId: SITE_ID },
+} as const;
+const BEARER_SECURITY = [{ bearerAuth: [] }] as const;
+const ERROR_RESPONSE = {
+  type: "object",
+  properties: { error: { type: "string" } },
+} as const;
+const UNAUTHORIZED_RESPONSE = {
+  ...ERROR_RESPONSE,
+  description: "Missing or invalid access key.",
+} as const;
+const FORBIDDEN_RESPONSE = {
+  ...ERROR_RESPONSE,
+  description: "Token not authorized for this site.",
+} as const;
+const NOT_FOUND_RESPONSE = {
+  ...ERROR_RESPONSE,
+  description: "Site was not registered.",
+} as const;
+
 const labelledArray = {
   type: "array",
   items: {
@@ -28,8 +52,7 @@ export const collectSchema = {
     required: ["siteId", "path"],
     properties: {
       siteId: {
-        type: "string",
-        pattern: "^[a-zA-Z0-9._-]{1,64}$",
+        ...SITE_ID,
         description: "Site identifier, as configured in the snippet's data-site attribute.",
       },
       path: {
@@ -47,8 +70,7 @@ export const collectSchema = {
   response: {
     204: { type: "null", description: "Hit recorded." },
     400: {
-      type: "object",
-      properties: { error: { type: "string" } },
+      ...ERROR_RESPONSE,
       description: "Invalid siteId or path.",
     },
   },
@@ -57,19 +79,13 @@ export const collectSchema = {
 export const statsSchema = {
   tags: ["stats"],
   summary: "Aggregate stats for a site",
-  security: [{ bearerAuth: [] }],
+  security: BEARER_SECURITY,
   description:
     "Daily uniques and pageviews plus aggregate breakdowns (pages, referrers, " +
     "browsers, OS, devices, languages, countries, hour histogram) over the " +
     "requested range. The range-wide unique total merges daily-salted HLLs, " +
     "so it is an upper bound rather than true cross-day uniques.",
-  params: {
-    type: "object",
-    required: ["siteId"],
-    properties: {
-      siteId: { type: "string", pattern: "^[a-zA-Z0-9._-]{1,64}$" },
-    },
-  },
+  params: SITE_PARAMS,
   querystring: {
     type: "object",
     properties: {
@@ -133,33 +149,27 @@ export const statsSchema = {
         countries: labelledArray,
       },
     },
-    400: { type: "object", properties: { error: { type: "string" } } },
-    401: { type: "object", properties: { error: { type: "string" } }, description: "Missing or invalid access key." },
-    403: { type: "object", properties: { error: { type: "string" } }, description: "Token not authorized for this site." },
+    400: ERROR_RESPONSE,
+    401: UNAUTHORIZED_RESPONSE,
+    403: FORBIDDEN_RESPONSE,
   },
 } as const;
 
 export const liveSchema = {
   tags: ["stats"],
   summary: "Live visitors",
-  security: [{ bearerAuth: [] }],
+  security: BEARER_SECURITY,
   description: "Unique visitors seen in roughly the last five minutes.",
-  params: {
-    type: "object",
-    required: ["siteId"],
-    properties: {
-      siteId: { type: "string", pattern: "^[a-zA-Z0-9._-]{1,64}$" },
-    },
-  },
+  params: SITE_PARAMS,
   response: {
     200: {
       type: "object",
       properties: { live: { type: "integer" } },
       required: ["live"],
     },
-    400: { type: "object", properties: { error: { type: "string" } } },
-    401: { type: "object", properties: { error: { type: "string" } }, description: "Missing or invalid access key." },
-    403: { type: "object", properties: { error: { type: "string" } }, description: "Token not authorized for this site." },
+    400: ERROR_RESPONSE,
+    401: UNAUTHORIZED_RESPONSE,
+    403: FORBIDDEN_RESPONSE,
   },
 } as const;
 
@@ -183,18 +193,16 @@ export const sitesSchema = {
   tags: ["stats"],
   summary: "Known site ids",
   description: "Site ids seen within the retention window, most recently active first.",
-  security: [{ bearerAuth: [] }],
+  security: BEARER_SECURITY,
   response: {
     200: {
       type: "object",
       properties: { sites: { type: "array", items: { type: "string" } } },
       required: ["sites"],
     },
-    401: { type: "object", properties: { error: { type: "string" } }, description: "Missing or invalid access key." },
+    401: UNAUTHORIZED_RESPONSE,
   },
 } as const;
-
-const SITE_ID = { type: "string", pattern: "^[a-zA-Z0-9._-]{1,64}$" } as const;
 
 /** Array of origin strings, e.g. "https://example.com" (scheme + host[:port], no path). */
 const originsArray = {
@@ -223,7 +231,7 @@ export const registerSiteSchema = {
     "Registers a site so /collect will accept hits for it. Ingest rejects any " +
     "siteId that is not registered. When allowedOrigins is non-empty, only hits " +
     "whose Origin matches an entry are recorded; empty means any origin.",
-  security: [{ bearerAuth: [] }],
+  security: BEARER_SECURITY,
   body: {
     type: "object",
     required: ["siteId"],
@@ -244,8 +252,8 @@ export const registerSiteSchema = {
       },
       required: [...siteConfigObject.required, "readToken"],
     },
-    400: { type: "object", properties: { error: { type: "string" } } },
-    401: { type: "object", properties: { error: { type: "string" } }, description: "Missing or invalid access key." },
+    400: ERROR_RESPONSE,
+    401: UNAUTHORIZED_RESPONSE,
   },
 } as const;
 
@@ -253,12 +261,8 @@ export const updateSiteSchema = {
   tags: ["admin"],
   summary: "Update a site's allowed origins",
   description: "Replaces the site's allowedOrigins list. Does not affect the read token.",
-  security: [{ bearerAuth: [] }],
-  params: {
-    type: "object",
-    required: ["siteId"],
-    properties: { siteId: SITE_ID },
-  },
+  security: BEARER_SECURITY,
+  params: SITE_PARAMS,
   body: {
     type: "object",
     required: ["allowedOrigins"],
@@ -266,9 +270,9 @@ export const updateSiteSchema = {
   },
   response: {
     200: siteConfigObject,
-    400: { type: "object", properties: { error: { type: "string" } } },
-    404: { type: "object", properties: { error: { type: "string" } }, description: "Site was not registered." },
-    401: { type: "object", properties: { error: { type: "string" } }, description: "Missing or invalid access key." },
+    400: ERROR_RESPONSE,
+    404: NOT_FOUND_RESPONSE,
+    401: UNAUTHORIZED_RESPONSE,
   },
 } as const;
 
@@ -276,12 +280,8 @@ export const rotateTokenSchema = {
   tags: ["admin"],
   summary: "Rotate a site's read token",
   description: "Issues a new read token for the site and invalidates the previous one. Shown once.",
-  security: [{ bearerAuth: [] }],
-  params: {
-    type: "object",
-    required: ["siteId"],
-    properties: { siteId: SITE_ID },
-  },
+  security: BEARER_SECURITY,
+  params: SITE_PARAMS,
   response: {
     200: {
       type: "object",
@@ -291,22 +291,22 @@ export const rotateTokenSchema = {
       },
       required: ["siteId", "readToken"],
     },
-    404: { type: "object", properties: { error: { type: "string" } }, description: "Site was not registered." },
-    401: { type: "object", properties: { error: { type: "string" } }, description: "Missing or invalid access key." },
+    404: NOT_FOUND_RESPONSE,
+    401: UNAUTHORIZED_RESPONSE,
   },
 } as const;
 
 export const listSitesSchema = {
   tags: ["admin"],
   summary: "List registered sites",
-  security: [{ bearerAuth: [] }],
+  security: BEARER_SECURITY,
   response: {
     200: {
       type: "object",
       properties: { sites: { type: "array", items: siteConfigObject } },
       required: ["sites"],
     },
-    401: { type: "object", properties: { error: { type: "string" } }, description: "Missing or invalid access key." },
+    401: UNAUTHORIZED_RESPONSE,
   },
 } as const;
 
@@ -314,15 +314,11 @@ export const deleteSiteSchema = {
   tags: ["admin"],
   summary: "Remove a registered site",
   description: "Removes a site from the registry. Existing aggregate stats keys are left to expire via retention.",
-  security: [{ bearerAuth: [] }],
-  params: {
-    type: "object",
-    required: ["siteId"],
-    properties: { siteId: SITE_ID },
-  },
+  security: BEARER_SECURITY,
+  params: SITE_PARAMS,
   response: {
     204: { type: "null", description: "Site removed." },
-    404: { type: "object", properties: { error: { type: "string" } }, description: "Site was not registered." },
-    401: { type: "object", properties: { error: { type: "string" } }, description: "Missing or invalid access key." },
+    404: NOT_FOUND_RESPONSE,
+    401: UNAUTHORIZED_RESPONSE,
   },
 } as const;
