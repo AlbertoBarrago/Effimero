@@ -119,6 +119,8 @@ pnpm --filter @effimero/snippet build         # builds dist/effimero.js
 | `MAX_DISTINCT_REFERRERS` | `2000` | Max distinct referrers tracked per site/day; extras fold into `__other__` |
 | `STATS_API_KEY` | auto-generated | **Admin** bearer key: manages the site registry (`/admin/*`) and reads every site (`/stats`, `/live`, `/sites`). Per-site read tokens (issued at registration) grant read access to a single site. Set it in `.env` to keep access stable across restarts. Empty/unset: a random key is generated and logged at boot. `disabled`: all endpoints are public |
 
+Numeric variables must be integers. `PORT`, `RETENTION_DAYS`, and `COLLECT_RATE_WINDOW` must be positive; rate and cardinality limits may be zero. Invalid values stop the server at startup.
+
 > **Important:** if Effimero runs behind nginx/Caddy/Traefik, set `TRUST_PROXY=true`, otherwise every visitor appears to come from the proxy's IP and unique counts collapse to ~1.
 
 ## Repository layout

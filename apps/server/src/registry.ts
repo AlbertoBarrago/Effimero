@@ -7,13 +7,12 @@ import type { Redis } from "ioredis";
  * registry anyone can inject or pollute stats for any site. The registry is
  * the source of truth: only registered sites are accepted.
  *
- * `allowedOrigins` is stored here already but NOT yet enforced — per-site CORS
- * / Origin validation is a later task. Persisting it now keeps the data model
- * stable so that change needs no migration.
+ * `allowedOrigins` restricts ingest to requests whose Origin matches the
+ * configured per-site allow-list. An empty list accepts any origin.
  */
 export interface SiteConfig {
   siteId: string;
-  /** Origins permitted to send hits for this site. Empty means "any" (not yet enforced). */
+  /** Origins permitted to send hits for this site. Empty means "any". */
   allowedOrigins: string[];
   active: boolean;
   /** ISO-8601 UTC timestamp of registration. */

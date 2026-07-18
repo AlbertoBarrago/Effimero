@@ -72,6 +72,7 @@ RETENTION_DAYS=90</code></pre>
       <tr><td><code>MAX_DISTINCT_REFERRERS</code></td><td><code>2000</code></td><td>Max distinct referrers tracked per site per day; extras fold into <code>__other__</code>.</td></tr>
       <tr><td><code>STATS_API_KEY</code></td><td>auto-generated</td><td><strong>Admin</strong> bearer key: manages the registry (<code>/admin/*</code>) and reads every site. Per-site read tokens read a single site. Set it in <code>.env</code> to keep access stable across restarts. Empty/unset: a random key is generated and logged once at boot. Set <code>disabled</code> to make all endpoints public.</td></tr>
     </table>
+    <p>Numeric variables must be integers. <code>PORT</code>, <code>RETENTION_DAYS</code>, and <code>COLLECT_RATE_WINDOW</code> must be positive; rate and cardinality limits may be zero. Invalid values stop the server at startup.</p>
 
     <h2 id="site-registry--access-levels">Site registry &amp; access levels</h2>
     <p>Ingest is gated: <code>/collect</code> only records hits for <strong>registered</strong> sites, so nobody can inject stats for a site you never set up. Register each site with the admin key, and optionally restrict which origins may send hits:</p>

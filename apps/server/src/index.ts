@@ -49,7 +49,7 @@ const app = Fastify({
 
 await app.register(cors, {
   origin: config.allowedOrigins === "*" ? true : config.allowedOrigins.split(","),
-  methods: ["GET", "POST"],
+  methods: ["GET", "POST", "PATCH", "DELETE"],
 });
 
 // The snippet posts JSON as text/plain: JSON content types force a CORS

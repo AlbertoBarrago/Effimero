@@ -53,6 +53,8 @@ All configuration is via environment variables on the `effimero` service:
 | `MAX_DISTINCT_REFERRERS` | `2000` | Max distinct referrers tracked per site per day; extras fold into `__other__`. |
 | `STATS_API_KEY` | auto-generated | **Admin** bearer key: manages the site registry (`/admin/*`) and reads every site (`/stats`, `/live`, `/sites`). Per-site read tokens (issued at registration) read a single site. Set it in `.env` to keep access stable across restarts. Empty/unset: a random key is generated and logged once at boot. Set `disabled` to make all endpoints public. |
 
+Numeric variables must be integers. `PORT`, `RETENTION_DAYS`, and `COLLECT_RATE_WINDOW` must be positive; rate and cardinality limits may be zero. Invalid values stop the server at startup.
+
 ## Site registry & access levels
 
 Ingest is gated: `/collect` only records hits for **registered** sites, so nobody can inject stats for a site you never set up. Register each site with the admin key, and optionally restrict which origins may send hits:
